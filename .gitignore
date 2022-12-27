@@ -1,0 +1,4 @@
+.idea/
+*.pt
+runs/
+__pycache__/
