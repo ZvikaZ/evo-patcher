@@ -1,5 +1,3 @@
-# TODO change this file's name
-
 from abc import ABC, abstractmethod
 
 import numpy as np

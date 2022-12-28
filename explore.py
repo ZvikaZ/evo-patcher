@@ -4,14 +4,14 @@ from pathlib import Path
 
 import torch
 
-import my_models
+import models_wrapper
 from datasets import ImageNetWithIndices, ImageNetSomeFiles
 from misc import get_device, dump_images
 
 IMAGENET_PATH = '/cs_storage/public_datasets/ImageNet'
 NUM_OF_THREADS = 8  # 0 is disabled
 BATCH_SIZE = 40  # TODO
-NUM_OF_IMAGES = 3  # TODO 30
+NUM_OF_IMAGES = 40
 
 YOLO_THRESHOLD_SIZE_RATIO = 0.1
 YOLO_THRESHOLD_CONFIDENCE = 0.8
@@ -54,8 +54,8 @@ def prepare():
     torch.manual_seed(1)  # TODO remove
     device = get_device()
 
-    resnext = my_models.ResnextModel(device)
-    yolo = my_models.YoloModel(device)
+    resnext = models_wrapper.ResnextModel(device)
+    yolo = models_wrapper.YoloModel(device)
 
     imagenet_data = ImageNetWithIndices(IMAGENET_PATH,
                                         transform=resnext.preprocess)

@@ -107,6 +107,11 @@ class Evaluator(SimpleIndividualEvaluator):
         p = Path('runs') / 'dump' / 'population' / f'gen_{individual.gen}'
         p.mkdir(parents=True, exist_ok=True)
         with open(p / (self.get_gen_id(individual) + '.log'), 'w') as f:
-            f.write(f'Fitness: {fitness}\n')
+            f.write(f'fitness: {fitness}\n')
+            f.write(f'gen: {individual.gen} , id: {individual.id}\n')
+            f.write(f'cloned from: {individual.cloned_from}\n')
+            f.write(f'tree size: {individual.size()}\n')
+            f.write(f'tree depth: {individual.depth()}\n')
+            f.write('code:\n')
             f.write(str(individual))
             f.write('\n')

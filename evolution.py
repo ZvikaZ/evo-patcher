@@ -41,7 +41,7 @@ def main():
                                                         function_set=function_set,
                                                         erc_range=(-1, 1),
                                                         bloat_weight=0.0001),
-                      population_size=4,  # 20,  # 200,  # TODO finch used 2000
+                      population_size=200,  # 20,  # 200,  # TODO finch used 2000
                       # user-defined fitness evaluation method
                       evaluator=Evaluator(),
                       # minimization problem (fitness is MAE), so higher fitness is worse
@@ -60,7 +60,7 @@ def main():
                       ),
         breeder=SimpleBreeder(),
         max_workers=8,
-        max_generation=2,  # 200,  # 500,  # TODO finch used 251
+        max_generation=200,  # 500,  # TODO finch used 251
         random_seed=1,  # TODO remove
         termination_checker=ThresholdFromTargetTerminationChecker(optimal=0, threshold=0.001),
         statistics=BestAverageWorstSizeTreeStatistics(
