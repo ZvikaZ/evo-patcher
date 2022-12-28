@@ -1,7 +1,3 @@
-"""
-A simple example optimizing a three-variable function.
-This is a non-sklearn setting so we use `evolve` and `execute`.
-"""
 from eckity.algorithms.simple_evolution import SimpleEvolution
 from eckity.breeders.simple_breeder import SimpleBreeder
 from eckity.creators.gp_creators.ramped_hh import RampedHalfAndHalfCreator
@@ -14,22 +10,13 @@ from eckity.statistics.best_avg_worst_size_tree_statistics import BestAverageWor
 from eckity.subpopulation import Subpopulation
 from eckity.termination_checkers.threshold_from_target_termination_checker import ThresholdFromTargetTerminationChecker
 
+from misc import set_logger
 from evolution_eval import Evaluator
 
 # TODO maximal growth factor of 4.0 (from FINCH)
 
-# TODO move this to eckity
-import numpy as np
 
-
-def f_atan2(x, y):
-    """atan2(x,y)"""
-    return np.arctan2(x, y)
-
-
-def f_hypot(x, y):
-    """hypot(x,y)"""
-    return np.hypot(x, y)
+logger = set_logger(__file__)
 
 
 def main():
@@ -54,7 +41,7 @@ def main():
                                                         function_set=function_set,
                                                         erc_range=(-1, 1),
                                                         bloat_weight=0.0001),
-                      population_size=20,  # 200,  # TODO finch used 2000
+                      population_size=4,  # 20,  # 200,  # TODO finch used 2000
                       # user-defined fitness evaluation method
                       evaluator=Evaluator(),
                       # minimization problem (fitness is MAE), so higher fitness is worse
@@ -62,30 +49,26 @@ def main():
                       elitism_rate=0.05,
                       # genetic operators sequence to be applied in each generation
                       operators_sequence=[
-                          SubtreeCrossover(probability=0.9, arity=2),  # TODO finch 0.8
+                          SubtreeCrossover(probability=0.8, arity=2),
                           SubtreeMutation(probability=0.2, arity=1),
                           ERCMutation(probability=0.05, arity=1)  # TODO is ERC working??
                       ],
                       selection_methods=[
                           # (selection method, selection probability) tuple
-                          (TournamentSelection(tournament_size=7, higher_is_better=False), 1)  # TODO size 7
+                          (TournamentSelection(tournament_size=7, higher_is_better=False), 1)
                       ]
                       ),
         breeder=SimpleBreeder(),
-        max_workers=1,  # TODO 4, or more?
-        max_generation=200,  # 500,  # TODO finch used 251
+        max_workers=8,
+        max_generation=2,  # 200,  # 500,  # TODO finch used 251
         random_seed=1,  # TODO remove
         termination_checker=ThresholdFromTargetTerminationChecker(optimal=0, threshold=0.001),
-        # statistics=BestAverageWorstStatistics()
-        statistics=BestAverageWorstSizeTreeStatistics(format_string='fitness: best {}, worst {}, average {}. average size {}')
+        statistics=BestAverageWorstSizeTreeStatistics(
+            format_string='fitness: best {}, worst {}, average {}. average size {}')
     )
 
     # evolve the generated initial population
     algo.evolve()
-
-    # execute the best individual after the evolution process ends, by assigning numeric values to the variable
-    # terminals in the tree
-    print(f'algo.execute(x=2,y=3): {algo.execute(x=2, y=3)}')
 
 
 if __name__ == '__main__':

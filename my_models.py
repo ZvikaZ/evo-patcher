@@ -1,5 +1,8 @@
+# TODO change this file's name
+
 from abc import ABC, abstractmethod
 
+import numpy as np
 import torch
 from torchvision.models import ResNeXt50_32X4D_Weights
 
@@ -30,16 +33,23 @@ class ResnextModel(Model):
 
 
 class YoloModel(Model):
+    # Yolo guide: https://github.com/ultralytics/yolov5/issues/36
     def __init__(self, device):
-        self.model = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True).to(device)
+        self.model = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True, _verbose=False).to(device)
+        self.batch_size = 100
 
     def infer(self, imgs):
-        # TODO imgs? torch?
-        # TODO less verbose
-        results = self.model(imgs)
-
-        results.save()
-        # print(results.xyxy[0])  # img1 predictions (tensor)
-        # print(results.pandas().xyxy[0])
-
+        yolo_results = []
+        for chunk in np.array_split(imgs, len(imgs) / self.batch_size + 1):
+            chunk_results = self.model(chunk.tolist())
+            chunk_results.save()
+            yolo_results.extend(chunk_results.tolist())
+        results = []
+        for result in yolo_results:
+            assert result.n == len(result.files) == len(result.ims) == len(result.xyxy) == 1
+            results.append({
+                'file': result.files[0],
+                'im': result.ims[0],
+                'xyxy': result.xyxy[0],
+            })
         return results
