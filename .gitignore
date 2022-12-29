@@ -3,3 +3,5 @@ __pycache__/
 runs/
 run.log
 *.pt
+pycharm_session_*.log
+TODOS.txt

@@ -1,4 +1,3 @@
-# TODO change this file's name
 # TODO clean all commented prints
 from pathlib import Path
 
@@ -8,21 +7,13 @@ import models_wrapper
 from datasets import ImageNetWithIndices, ImageNetSomeFiles
 from misc import get_device, dump_images
 
-IMAGENET_PATH = '/cs_storage/public_datasets/ImageNet'
-NUM_OF_THREADS = 8  # 0 is disabled
-BATCH_SIZE = 40  # TODO
-NUM_OF_IMAGES = 40
 
-YOLO_THRESHOLD_SIZE_RATIO = 0.1
-YOLO_THRESHOLD_CONFIDENCE = 0.8
-
-
-def infer_images(root, model, imagenet_data):
+def infer_images(root, model, imagenet_data, batch_size):
     dataset = ImageNetSomeFiles(root=root,
                                 transform=model.preprocess,
                                 imagenet_data=imagenet_data)
     data_loader = torch.utils.data.DataLoader(dataset,
-                                              batch_size=BATCH_SIZE,
+                                              batch_size=batch_size,
                                               shuffle=True,
                                               # TODO increasing num_workers to NUM_OF_THREADS seems to cause problems
                                               num_workers=0)
@@ -48,21 +39,22 @@ def infer_images(root, model, imagenet_data):
                     #       f"predicted: {y_hat[i]}")
     assert success + fail == len(dataset)
     return success / len(dataset)
+    # TODO return (some?) mismatches for demonstration?
 
 
-def prepare():
-    torch.manual_seed(1)  # TODO remove
+def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio, threshold_confidence):
+    torch.manual_seed(1)  # TODO move to main.py (and suggest removing)
     device = get_device()
 
     resnext = models_wrapper.ResnextModel(device)
     yolo = models_wrapper.YoloModel(device)
 
-    imagenet_data = ImageNetWithIndices(IMAGENET_PATH,
+    imagenet_data = ImageNetWithIndices(imagenet_path,
                                         transform=resnext.preprocess)
     data_loader = torch.utils.data.DataLoader(imagenet_data,
-                                              batch_size=BATCH_SIZE,
+                                              batch_size=batch_size,
                                               shuffle=True,
-                                              num_workers=NUM_OF_THREADS)
+                                              num_workers=num_of_images_threads)
 
     images_indices = []
     for X, y, indices in data_loader:
@@ -75,7 +67,7 @@ def prepare():
             for i in range(len(indices)):
                 if y[i] == y_hat[i]:
                     images_indices.append(indices[i])
-        if len(images_indices) >= NUM_OF_IMAGES * 4:  # we'll throw many images because of YOLO, so take more initially
+        if len(images_indices) >= num_of_images * 4:  # we'll throw many images because of YOLO, so take more initially
             break
 
     imgs_with_labels = [(imagenet_data.get_filepath(i), imagenet_data.get_label(i)) for i in images_indices]
@@ -91,7 +83,7 @@ def prepare():
         for x1, y1, x2, y2, confidence, label in yolo_results[i]['xyxy']:
             width_x = x2 - x1
             width_y = y2 - y1
-            if width_x * width_y / img_area > YOLO_THRESHOLD_SIZE_RATIO and confidence > YOLO_THRESHOLD_CONFIDENCE:
+            if width_x * width_y / img_area > threshold_size_ratio and confidence > threshold_confidence:
                 keep = True
                 break
         if keep:
@@ -101,7 +93,7 @@ def prepare():
                 'bb': yolo_results[i]['xyxy']
             })
 
-        if len(image_results) >= NUM_OF_IMAGES:
+        if len(image_results) >= num_of_images:
             break
 
     return {
@@ -110,10 +102,3 @@ def prepare():
         'imagenet_data': imagenet_data,
         'image_results': image_results,
     }
-
-
-if __name__ == '__main__':
-    data = prepare()
-    for i in range(1665, 1685):
-        root = f'runs.1/dump/gen_69_ind_{i}'
-        print(i, infer_images(root, data['resnext'], data['imagenet_data']))

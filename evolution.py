@@ -13,38 +13,29 @@ from eckity.termination_checkers.threshold_from_target_termination_checker impor
 from misc import set_logger
 from evolution_eval import Evaluator
 
-# TODO maximal growth factor of 4.0 (from FINCH)
-
-
 logger = set_logger(__file__)
 
 
-def main():
-    """
-    Evolutionary experiment to create a GP tree that solves a Symbolic Regression problem
-    In this example every GP Tree is a mathematical function.
-    The goal is to create a GP Tree that produces the closest function to the regression target function
-    """
-
-    # each node of the GP tree is either a terminal or a function
-    # function nodes, each has two children (which are its operands)
+def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
+           random_seed,
+           imagenet_path, batch_size, num_of_images, threshold_size_ratio, threshold_confidence):
     function_set = [f_add, f_mul, f_sub, f_div, f_iflte, f_sin, f_cos, f_atan2, f_hypot]
-    # f_sqrt, f_log, f_abs, f_max, f_min, f_inv, f_neg]
+    # TODO do we need more functions?    f_sqrt, f_log, f_abs, f_max, f_min, f_inv, f_neg]
 
-    # terminal set, consisted of variables and constants
     terminal_set = ['x', 'y']
 
     # Initialize the evolutionary algorithm
+    # TODO maximal growth factor of 4.0 (from FINCH) or max tree depth of 17 (Koza)
     algo = SimpleEvolution(
-        Subpopulation(creators=RampedHalfAndHalfCreator(init_depth=(2, 4),
+        Subpopulation(creators=RampedHalfAndHalfCreator(init_depth=(2, creation_max_depth),
                                                         terminal_set=terminal_set,
                                                         function_set=function_set,
                                                         erc_range=(-1, 1),
-                                                        bloat_weight=0.0001),
-                      population_size=200,  # 20,  # 200,  # TODO finch used 2000
-                      # user-defined fitness evaluation method
-                      evaluator=Evaluator(),
-                      # minimization problem (fitness is MAE), so higher fitness is worse
+                                                        bloat_weight=0.0001),  # TODO is it enough?
+                      population_size=population_size,
+                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size,
+                                          num_of_images, threshold_size_ratio, threshold_confidence),
+                      # minimization problem, so higher fitness is worse
                       higher_is_better=False,
                       elitism_rate=0.05,
                       # genetic operators sequence to be applied in each generation
@@ -59,10 +50,10 @@ def main():
                       ]
                       ),
         breeder=SimpleBreeder(),
-        max_workers=8,
-        max_generation=200,  # 500,  # TODO finch used 251
-        random_seed=1,  # TODO remove
-        termination_checker=ThresholdFromTargetTerminationChecker(optimal=0, threshold=0.001),
+        max_workers=num_of_evolve_threads,
+        max_generation=max_generation,
+        random_seed=random_seed,  # TODO allow free seeding
+        termination_checker=ThresholdFromTargetTerminationChecker(optimal=0, threshold=0.01),
         statistics=BestAverageWorstSizeTreeStatistics(
             format_string='fitness: best {}, worst {}, average {}. average size {}')
     )
@@ -72,4 +63,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    evolve(creation_max_depth=6, population_size=200, num_of_threads=8, max_generation=200, random_seed=1)

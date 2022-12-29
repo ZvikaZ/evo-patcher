@@ -31,6 +31,7 @@ def set_logger(logger_name, debug=True, logfile='run.log'):
                             logging.FileHandler(logfile)
                         ])
     # these are too noisy - disable them
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
     return logging.getLogger(logger_name)

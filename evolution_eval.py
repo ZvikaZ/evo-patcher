@@ -1,6 +1,5 @@
 """
 This module implements the fitness class, which delivers the fitness function.
-You will need to implement such a class to work with your own problem and fitness function.
 """
 import shutil
 import logging
@@ -9,7 +8,7 @@ import torch
 import torchvision.io
 from eckity.evaluators.simple_individual_evaluator import SimpleIndividualEvaluator
 
-from explore import prepare, infer_images
+from image_utils import prepare, infer_images
 from misc import get_scratch_dir
 
 logger = logging.getLogger(__name__)
@@ -20,16 +19,20 @@ class Evaluator(SimpleIndividualEvaluator):
     Compute the fitness of an individual.
     """
 
-    def __init__(self):
+    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images,
+                 threshold_size_ratio, threshold_confidence):
         super().__init__()
-        data = prepare()
+        self.batch_size = batch_size
+
+        data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
+                       threshold_confidence)
         self.device = data['device']
         self.resnext = data['resnext']
         self.imagenet_data = data['imagenet_data']
         self.image_results = data['image_results']
 
+        # TODO move to main.py
         self.num_of_images_to_dump = 2
-        # TODO move somewhere else?
         self.ratio_x = 0.3
         self.ratio_y = 0.3
 
@@ -49,15 +52,18 @@ class Evaluator(SimpleIndividualEvaluator):
             fitness value
         """
         scratch_dir = get_scratch_dir() / self.get_gen_id(individual)
+        img_names = []
 
         for i, img_result in enumerate(self.image_results):
             label = img_result['label']
             (scratch_dir / label).mkdir(exist_ok=True, parents=True)
-            img_name = self.apply_patches(individual, img_result['img'], img_result['bb'], scratch_dir / label)
-            self.dump_images(i, img_name)
+            img_names.append(self.apply_patches(individual, img_result['img'], img_result['bb'], scratch_dir / label))
 
         # TODO insert to fitness decreasing the inference probability?
-        fitness = infer_images(scratch_dir, self.resnext, self.imagenet_data)
+        fitness = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size)
+
+        for i, img_name in enumerate(img_names):
+            self.dump_images(i, individual.gen, img_name, fitness)
         shutil.rmtree(scratch_dir)
 
         self.dump_ind(individual, fitness)
@@ -97,11 +103,12 @@ class Evaluator(SimpleIndividualEvaluator):
     def get_gen_id(self, individual):
         return f'gen_{individual.gen}_ind_{individual.id}'
 
-    def dump_images(self, i, img_name):
+    def dump_images(self, i, gen, img_name, fitness):
         if i < self.num_of_images_to_dump:
-            p = Path('runs') / 'dump' / 'patches'
+            p = Path('runs') / 'dump' / 'patches' / f'gen_{gen}'
             p.mkdir(parents=True, exist_ok=True)
-            shutil.copy(img_name, p)
+            orig = Path(img_name)
+            shutil.copy(img_name, p / f'{orig.stem}__fitness_{fitness:.2f}{orig.suffix}')
 
     def dump_ind(self, individual, fitness):
         p = Path('runs') / 'dump' / 'population' / f'gen_{individual.gen}'

@@ -40,7 +40,7 @@ class YoloModel(Model):
         yolo_results = []
         for chunk in np.array_split(imgs, len(imgs) / self.batch_size + 1):
             chunk_results = self.model(chunk.tolist())
-            chunk_results.save()
+            chunk_results.save()  # TODO disable the saving printing, and maybe unify the directories
             yolo_results.extend(chunk_results.tolist())
         results = []
         for result in yolo_results:
