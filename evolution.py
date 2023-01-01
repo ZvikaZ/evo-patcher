@@ -1,7 +1,6 @@
 from eckity.algorithms.simple_evolution import SimpleEvolution
 from eckity.breeders.simple_breeder import SimpleBreeder
 from eckity.creators.gp_creators.ramped_hh import RampedHalfAndHalfCreator
-from eckity.genetic_encodings.gp.tree.functions import *
 from eckity.genetic_operators.crossovers.subtree_crossover import SubtreeCrossover
 from eckity.genetic_operators.mutations.erc_mutation import ERCMutation
 from eckity.genetic_operators.mutations.subtree_mutation import SubtreeMutation
@@ -12,6 +11,7 @@ from eckity.termination_checkers.threshold_from_target_termination_checker impor
 
 from misc import set_logger
 from evolution_eval import Evaluator
+from evolution_func import *
 
 logger = set_logger(__file__)
 
@@ -19,9 +19,7 @@ logger = set_logger(__file__)
 def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
            random_seed,
            imagenet_path, batch_size, num_of_images, threshold_size_ratio, threshold_confidence):
-    function_set = [f_add, f_mul, f_sub, f_div, f_iflte, f_sin, f_cos, f_atan2, f_hypot]
-    # TODO do we need more functions?    f_sqrt, f_log, f_abs, f_max, f_min, f_inv, f_neg]
-
+    function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot]
     terminal_set = ['x', 'y']
 
     # Initialize the evolutionary algorithm

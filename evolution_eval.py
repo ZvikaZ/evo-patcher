@@ -4,6 +4,7 @@ This module implements the fitness class, which delivers the fitness function.
 import shutil
 import logging
 from pathlib import Path
+
 import torch
 import torchvision.io
 from eckity.evaluators.simple_individual_evaluator import SimpleIndividualEvaluator
@@ -23,6 +24,7 @@ class Evaluator(SimpleIndividualEvaluator):
                  threshold_size_ratio, threshold_confidence):
         super().__init__()
         self.batch_size = batch_size
+        self.num_of_images_threads = num_of_images_threads
 
         data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
                        threshold_confidence)
@@ -51,6 +53,7 @@ class Evaluator(SimpleIndividualEvaluator):
         float
             fitness value
         """
+        individual.execute_cache = {}
         scratch_dir = get_scratch_dir() / self.get_gen_id(individual)
         img_names = []
 
@@ -60,7 +63,8 @@ class Evaluator(SimpleIndividualEvaluator):
             img_names.append(self.apply_patches(individual, img_result['img'], img_result['bb'], scratch_dir / label))
 
         # TODO insert to fitness decreasing the inference probability?
-        fitness = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size)
+        fitness = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size,
+                               self.num_of_images_threads)
 
         for i, img_name in enumerate(img_names):
             self.dump_images(i, individual.gen, img_name, fitness)
@@ -72,7 +76,7 @@ class Evaluator(SimpleIndividualEvaluator):
         return fitness
 
     def apply_patches(self, individual, img, xyxy, label_dir):
-        im = torchvision.io.read_image(img)  # TODO pass the image tensor around, instead of reading and writing
+        im = torchvision.io.read_image(img).to(self.device)
         for x1, y1, x2, y2, confidence, label in xyxy:
             width_x = int(x2 - x1)
             width_y = int(y2 - y1)
@@ -83,22 +87,28 @@ class Evaluator(SimpleIndividualEvaluator):
             patch = self.get_patch(individual, patch_width_x, patch_width_y)
             im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x] = patch
         img_name = (label_dir / f'{Path(img).stem}__{self.get_gen_id(individual)}.png').as_posix()
-        torchvision.io.write_png(im, img_name)
+        torchvision.io.write_png(im.to('cpu'), img_name)
         return img_name
 
     def get_patch(self, individual, width_x, width_y):
-        patch = []
-        # TODO vectorize
-        for y in range(int(width_y)):
-            line = []
-            for x in range(int(width_x)):
-                if individual.execute(x=x, y=y) > 0:
-                    line.append(255)
-                else:
-                    line.append(0)
-            patch.append(line)
+        yy, xx = torch.meshgrid(torch.arange(width_y), torch.arange(width_x))
+        xx = xx.to(self.device)
+        yy = yy.to(self.device)
+        result = self.execute(individual, x=xx, y=yy)
+        try:
+            return (result > 0).int() * 255
+        except AttributeError:
+            assert type(result) == float
+            if result > 0:
+                return torch.ones_like(xx)
+            else:
+                return torch.zeros_like(xx)
 
-        return torch.tensor(patch)
+    def execute(self, individual, x, y):
+        key = (individual, x, y)
+        if key not in individual.execute_cache:
+            individual.execute_cache[key] = individual.execute(x=x, y=y)
+        return individual.execute_cache[key]
 
     def get_gen_id(self, individual):
         return f'gen_{individual.gen}_ind_{individual.id}'

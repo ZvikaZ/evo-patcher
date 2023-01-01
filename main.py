@@ -9,7 +9,7 @@ if __name__ == "__main__":
     general_group.add_argument("--random-seed", type=int, default=1)
 
     evolution_group = arg_parser.add_argument_group("Evolution options")
-    evolution_group.add_argument("--num-of-evolve-threads", type=int, default=1)  # TODO optimal value?
+    evolution_group.add_argument("--num-of-evolve-threads", type=int, default=1)  # TODO 2?
     evolution_group.add_argument("--population-size", '-p', type=int, default=200)
     evolution_group.add_argument("--max-generation", '-g', type=int, default=200)
     evolution_group.add_argument("--creation-max-depth", type=int, default=6)

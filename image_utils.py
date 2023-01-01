@@ -8,14 +8,14 @@ from datasets import ImageNetWithIndices, ImageNetSomeFiles
 from misc import get_device, dump_images
 
 
-def infer_images(root, model, imagenet_data, batch_size):
+def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
     dataset = ImageNetSomeFiles(root=root,
                                 transform=model.preprocess,
                                 imagenet_data=imagenet_data)
     data_loader = torch.utils.data.DataLoader(dataset,
                                               batch_size=batch_size,
                                               shuffle=True,
-                                              # TODO increasing num_workers to NUM_OF_THREADS seems to cause problems
+                                              # TODO increasing num_workers to num_of_images_threads seems to cause problems
                                               num_workers=0)
     success = 0
     fail = 0
