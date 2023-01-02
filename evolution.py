@@ -62,4 +62,4 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
 
 
 if __name__ == '__main__':
-    evolve(creation_max_depth=6, population_size=200, num_of_threads=8, max_generation=200, random_seed=1)
+    evolve(creation_max_depth=6, population_size=200, max_generation=200, random_seed=1)

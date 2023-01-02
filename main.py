@@ -17,7 +17,7 @@ if __name__ == "__main__":
     images_group = arg_parser.add_argument_group("Images options")
     images_group.add_argument("--num-of-images-threads", type=int, default=4)  # TODO increase?
     images_group.add_argument("--imagenet-path", default='/cs_storage/public_datasets/ImageNet')
-    images_group.add_argument("--batch-size", type=int, default=500)  # 1000 is too big to fit in memory
+    images_group.add_argument("--batch-size", type=int, default=100)  # 500 is too big to always fit in memory
     images_group.add_argument("--num-of-images", '-n', type=int, default=40)
 
     yolo_group = arg_parser.add_argument_group("Yolo options")

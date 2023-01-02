@@ -1,15 +1,14 @@
-# TODO clean all commented prints
 from pathlib import Path
+import logging
 
 import torch
-import joblib
 
 import models_wrapper
 from datasets import ImageNetWithIndices, ImageNetSomeFiles
 from misc import get_device, dump_images
 
-import logging
 logger = logging.getLogger(__name__)
+
 
 def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
     dataset = ImageNetSomeFiles(root=root,
@@ -36,7 +35,7 @@ def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
 
 def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
             threshold_confidence):
-    #TODO: remove time...  (and logger?)
+    # TODO: remove time...  (and logger?)
     import time
     start = time.process_time()
 
