@@ -22,6 +22,8 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
     function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot]
     terminal_set = ['x', 'y']
 
+    maximization_problem = True
+
     # Initialize the evolutionary algorithm
     # TODO maximal growth factor of 4.0 (from FINCH) or max tree depth of 17 (Koza)
     algo = SimpleEvolution(
@@ -33,8 +35,7 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
                       population_size=population_size,
                       evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size,
                                           num_of_images, threshold_size_ratio, threshold_confidence),
-                      # minimization problem, so higher fitness is worse
-                      higher_is_better=False,
+                      higher_is_better=maximization_problem,
                       elitism_rate=0.05,
                       # genetic operators sequence to be applied in each generation
                       operators_sequence=[
@@ -44,14 +45,14 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
                       ],
                       selection_methods=[
                           # (selection method, selection probability) tuple
-                          (TournamentSelection(tournament_size=7, higher_is_better=False), 1)
+                          (TournamentSelection(tournament_size=7, higher_is_better=maximization_problem), 1)
                       ]
                       ),
         breeder=SimpleBreeder(),
         max_workers=num_of_evolve_threads,
         max_generation=max_generation,
         random_seed=random_seed,  # TODO allow free seeding
-        termination_checker=ThresholdFromTargetTerminationChecker(optimal=0, threshold=0.01),
+        termination_checker=ThresholdFromTargetTerminationChecker(optimal=1, threshold=0.001),
         statistics=BestAverageWorstSizeTreeStatistics(
             format_string='fitness: best {}, worst {}, average {}. average size {}')
     )

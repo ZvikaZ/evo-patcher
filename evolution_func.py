@@ -48,13 +48,7 @@ def t_atan2(x, y):
 
 def t_hypot(x, y):
     """hypot(x,y)"""
-    try:
-        return torch.hypot(tensorize(x), tensorize(y))
-    except RuntimeError:
-        print(x)
-        print(y)
-        print("ha")
-        return 1
+    return torch.hypot(tensorize(x), tensorize(y))
 
 
 def t_iflte(x, y, z, w):

@@ -32,6 +32,7 @@ class Evaluator(SimpleIndividualEvaluator):
         self.resnext = data['resnext']
         self.imagenet_data = data['imagenet_data']
         self.image_results = data['image_results']
+        self.image_probs = data['image_probs']
 
         # TODO move to main.py
         self.num_of_images_to_dump = 2
@@ -62,9 +63,14 @@ class Evaluator(SimpleIndividualEvaluator):
             (scratch_dir / label).mkdir(exist_ok=True, parents=True)
             img_names.append(self.apply_patches(individual, img_result['img'], img_result['bb'], scratch_dir / label))
 
-        # TODO insert to fitness decreasing the inference probability?
-        fitness = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size,
-                               self.num_of_images_threads)
+        y, y_hat, probs = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size,
+                                       self.num_of_images_threads)
+
+        model_fail_rate = (y != y_hat).count_nonzero() / len(y)
+        avg_prob_diff = (self.image_probs - probs).mean()
+
+        fitness = model_fail_rate * 0.7 + avg_prob_diff * 0.3
+        fitness = fitness.item()
 
         for i, img_name in enumerate(img_names):
             self.dump_images(i, individual.gen, img_name, fitness)

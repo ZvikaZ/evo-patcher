@@ -15,9 +15,9 @@ if __name__ == "__main__":
     evolution_group.add_argument("--creation-max-depth", type=int, default=6)
 
     images_group = arg_parser.add_argument_group("Images options")
-    images_group.add_argument("--num-of-images-threads", type=int, default=8)  # TODO increase?
+    images_group.add_argument("--num-of-images-threads", type=int, default=4)  # TODO increase?
     images_group.add_argument("--imagenet-path", default='/cs_storage/public_datasets/ImageNet')
-    images_group.add_argument("--batch-size", type=int, default=40)  # TODO
+    images_group.add_argument("--batch-size", type=int, default=500)  # 1000 is too big to fit in memory
     images_group.add_argument("--num-of-images", '-n', type=int, default=40)
 
     yolo_group = arg_parser.add_argument_group("Yolo options")

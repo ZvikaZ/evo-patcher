@@ -23,11 +23,15 @@ class ResnextModel(Model):
                                     weights=self.weights).to(device)
         self.model.eval()
         self.preprocess = self.weights.transforms()
+        self.softmax = torch.nn.Softmax(dim=1)
 
     def infer(self, batch):
         with torch.no_grad():
-            output = self.model(batch.to(self.device))
-        return torch.argmax(output, dim=1)
+            logits = self.model(batch.to(self.device))
+        output = self.softmax(logits)
+        prob, y_hat = output.topk(k=1)
+        assert prob.shape[-1] == y_hat.shape[-1] == 1
+        return prob.squeeze(), y_hat.squeeze()
 
 
 class YoloModel(Model):
