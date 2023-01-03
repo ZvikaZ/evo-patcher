@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # TODO in BPGP we also plotted unique_values and unique_ratio. are they interesting?
 
 import argparse
@@ -6,6 +8,7 @@ import re
 from matplotlib import pyplot as plt
 
 STAT_FILE = 'run.log'
+RESULTS_IN_PLOT = 4
 
 
 def get_dirs(path):
@@ -47,6 +50,7 @@ def plot_single_run(ax, r):
     ax.plot(r['average'], '.-', alpha=0.6, label='average')
     # # plot nothing, just add to our legend
     ax.plot([], [], '.-', label='Average Sizes', color='tab:pink')
+    ax.set_xlim(left=0)
     ax.set_ylim(bottom=0)
     ax.set_xlabel("Generation")
     ax.set_ylabel("Fitness")
@@ -62,35 +66,36 @@ def plot_single_run(ax, r):
     return out
 
 
-def analyze(d, regression):
-    if regression:
-        analyze_regression(d)
-    else:
+def analyze(d, single_run):
+    if single_run:
         analyze_single_run(d)
+    else:
+        analyze_regression(d)
 
 
 def analyze_regression(regression_dir):
     results = []
     for d in get_dirs(regression_dir):
         results.append(get_run_result(d))
-    results_to_plot = [r for r in results if r is not None]
-    # TODO show more than 4?
-    results_to_plot = results_to_plot[:6]
+    all_results_to_plot = [r for r in results if r is not None]
+    while all_results_to_plot:
+        results_to_plot = all_results_to_plot[:RESULTS_IN_PLOT]
+        all_results_to_plot = all_results_to_plot[RESULTS_IN_PLOT:]
 
-    fig, ax = plt.subplots(len(results_to_plot), 1, figsize=(10, 10))
-    for (index, axes) in enumerate(ax):
-        plot_single_run(axes, results_to_plot[index])
-    axes.legend(loc='lower left')
-    fig.tight_layout()
-    plt.show()
+        fig, ax = plt.subplots(len(results_to_plot), 1, figsize=(10, 10))
+        for (index, axes) in enumerate(ax):
+            plot_single_run(axes, results_to_plot[index])
+        axes.legend(loc='lower left')
+        fig.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Analyze regression results", )
-    parser.add_argument("dir", help="directory containing run results, or regression")
-    parser.add_argument("--regression", "-r", action='store_true',
-                        help="'dir' points to regression, instead of single run")
+    parser.add_argument("--dir", default='regression', help="directory containing run results, or regression")
+    parser.add_argument("--single-run", "-s", action='store_true',
+                        help="'dir' points to single run instead of regression")
 
     args = parser.parse_args()
-    analyze(args.dir, args.regression)
+    analyze(args.dir, args.single_run)

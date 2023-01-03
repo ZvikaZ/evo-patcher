@@ -54,7 +54,6 @@ class Evaluator(SimpleIndividualEvaluator):
         float
             fitness value
         """
-        individual.execute_cache = {}
         scratch_dir = get_scratch_dir() / self.get_gen_id(individual)
         img_names = []
 
@@ -62,8 +61,6 @@ class Evaluator(SimpleIndividualEvaluator):
             label = img_result['label']
             (scratch_dir / label).mkdir(exist_ok=True, parents=True)
             img_names.append(self.apply_patches(individual, img_result['img'], img_result['bb'], scratch_dir / label))
-
-        del individual.execute_cache
 
         y, y_hat, probs = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size,
                                        self.num_of_images_threads)
@@ -102,7 +99,7 @@ class Evaluator(SimpleIndividualEvaluator):
         yy, xx = torch.meshgrid(torch.arange(width_y), torch.arange(width_x))
         xx = xx.to(self.device)
         yy = yy.to(self.device)
-        result = self.execute(individual, x=xx, y=yy)
+        result = individual.execute(x=xx, y=yy)
         try:
             return (result > 0).int() * 255
         except AttributeError:
@@ -111,14 +108,6 @@ class Evaluator(SimpleIndividualEvaluator):
                 return torch.ones_like(xx)
             else:
                 return torch.zeros_like(xx)
-
-    def execute(self, individual, x, y):
-        key = (individual, x, y)
-        if key not in individual.execute_cache:
-            individual.execute_cache[key] = individual.execute(x=x, y=y)
-        else:
-            logger.info("USING CACHE")  # TODO if it's never printed, delete this mechanism
-        return individual.execute_cache[key]
 
     def get_gen_id(self, individual):
         return f'gen_{individual.gen}_ind_{individual.id}'
@@ -141,9 +130,11 @@ class Evaluator(SimpleIndividualEvaluator):
             f.write(f'    y_hat : {y_hat}\n')
             f.write(f'    probs (orig): {self.image_probs}\n')
             f.write(f'    probs (ind) : {probs}\n')
-            f.write(f'cloned from: {individual.cloned_from}\n')
-            f.write(f'tree size: {individual.size()}\n')
-            f.write(f'tree depth: {individual.depth()}\n')
+            f.write(f'cloned from       : {individual.cloned_from}\n')
+            f.write(f'selected by       : {individual.selected_by}\n')
+            f.write(f'applied operators : {individual.applied_operators}\n')
+            f.write(f'tree size  : {individual.size()}\n')
+            f.write(f'tree depth : {individual.depth()}\n')
             f.write('code:\n')
             f.write(str(individual))
             f.write('\n')

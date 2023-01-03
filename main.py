@@ -13,9 +13,9 @@ if __name__ == "__main__":
     general_group.add_argument("--random-seed", type=int, default=1)
 
     evolution_group = arg_parser.add_argument_group("Evolution options")
-    evolution_group.add_argument("--patch-ratio-x", default=0.4)
-    evolution_group.add_argument("--patch-ratio-y", default=0.4)
-    evolution_group.add_argument("--elitism-rate", default=0)
+    evolution_group.add_argument("--patch-ratio-x", type=float, default=0.4)
+    evolution_group.add_argument("--patch-ratio-y", type=float, default=0.4)
+    evolution_group.add_argument("--elitism-rate", type=float, default=0)
     evolution_group.add_argument("--num-of-evolve-threads", type=int, default=1)  # TODO 2?
     evolution_group.add_argument("--population-size", '-p', type=int, default=300)
     evolution_group.add_argument("--max-generation", '-g', type=int, default=250)
@@ -28,8 +28,8 @@ if __name__ == "__main__":
     images_group.add_argument("--num-of-images", '-n', type=int, default=40)
 
     yolo_group = arg_parser.add_argument_group("Yolo options")
-    images_group.add_argument("--threshold-size-ratio", default=0.1)
-    images_group.add_argument("--threshold-confidence", default=0.8)
+    images_group.add_argument("--threshold-size-ratio", type=float, default=0.1)
+    images_group.add_argument("--threshold-confidence", type=float, default=0.8)
 
     args = arg_parser.parse_args()
     logger.debug(args)
