@@ -66,9 +66,15 @@ class Evaluator(SimpleIndividualEvaluator):
                                        self.num_of_images_threads)
 
         model_fail_rate = (y != y_hat).count_nonzero() / len(y)
-        avg_prob_diff = (self.image_probs - probs).mean()
+        avg_prob_diff = (self.image_probs[y == y_hat] - probs[y == y_hat]).mean()
 
-        fitness = model_fail_rate * 0.7 + avg_prob_diff * 0.3
+        if not avg_prob_diff.isnan():
+            fitness = model_fail_rate * 0.7 + avg_prob_diff * 0.3
+        else:
+            # all y are different from y_hat ; couldn't compute avg_prob_diff ;
+            # it probably means that model_fail_rate is 1, and we won
+            logger.info(f'avg_prob_diff is nan ; fitness is only model_fail_rate: {model_fail_rate}')
+            fitness = model_fail_rate
         fitness = fitness.item()
 
         for i, img_name in enumerate(img_names):

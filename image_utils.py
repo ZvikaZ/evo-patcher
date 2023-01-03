@@ -8,6 +8,14 @@ import models_wrapper
 from datasets import ImageNetWithIndices, ImageNetSomeFiles
 from misc import get_device, dump_images
 
+# required for yolo unpickling
+import sys
+import os.path
+from torch import hub
+
+sys.path.append(os.path.join(hub.get_dir(), 'ultralytics_yolov5_master'))
+import models  # it's in the aforementioned path
+
 logger = logging.getLogger(__name__)
 
 SHELVE_FILE = "persist"
@@ -51,10 +59,17 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, thr
     torch.manual_seed(1)  # TODO move to main.py (and suggest removing)
     device = get_device()
 
-    resnext = models_wrapper.ResnextModel(device)
-    yolo = models_wrapper.YoloModel(device)
-
     with shelve.open(SHELVE_FILE) as shelve_db:
+        if 'resnext' not in shelve_db:
+            logger.debug('Creating resnext model')
+            shelve_db['resnext'] = models_wrapper.ResnextModel(device)
+        if 'yolo' not in shelve_db:
+            logger.debug('Creating yolo model')
+            shelve_db['yolo'] = models_wrapper.YoloModel(device)
+
+        resnext = shelve_db['resnext']
+        yolo = shelve_db['yolo']
+
         if 'imagenet_data' not in shelve_db:
             logger.debug('Loading ImageNet')
             shelve_db['imagenet_data'] = ImageNetWithIndices(imagenet_path,

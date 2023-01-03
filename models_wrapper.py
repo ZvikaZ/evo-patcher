@@ -18,11 +18,11 @@ class Model(ABC):
 class ResnextModel(Model):
     def __init__(self, device):
         self.device = device
-        self.weights = ResNeXt50_32X4D_Weights.DEFAULT
+        weights = ResNeXt50_32X4D_Weights.DEFAULT
         self.model = torch.hub.load('pytorch/vision:v0.10.0', 'resnext50_32x4d',
-                                    weights=self.weights).to(device)
+                                    weights=weights).to(device)
         self.model.eval()
-        self.preprocess = self.weights.transforms()
+        self.preprocess = weights.transforms()
         self.softmax = torch.nn.Softmax(dim=1)
 
     def infer(self, batch):
