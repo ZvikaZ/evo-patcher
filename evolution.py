@@ -9,15 +9,12 @@ from eckity.statistics.best_avg_worst_size_tree_statistics import BestAverageWor
 from eckity.subpopulation import Subpopulation
 from eckity.termination_checkers.threshold_from_target_termination_checker import ThresholdFromTargetTerminationChecker
 
-from misc import set_logger
 from evolution_eval import Evaluator
 from evolution_func import *
 
-logger = set_logger(__file__)
-
 
 def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
-           random_seed,
+           random_seed, patch_ratio_x, patch_ratio_y, elitism_rate,
            imagenet_path, batch_size, num_of_images, threshold_size_ratio, threshold_confidence):
     function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot]
     terminal_set = ['x', 'y']
@@ -33,10 +30,10 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
                                                         erc_range=(-1, 1),
                                                         bloat_weight=0.0001),  # TODO is it enough?
                       population_size=population_size,
-                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size,
-                                          num_of_images, threshold_size_ratio, threshold_confidence),
+                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size, num_of_images,
+                                          patch_ratio_x, patch_ratio_y, threshold_size_ratio, threshold_confidence),
                       higher_is_better=maximization_problem,
-                      elitism_rate=0.05,
+                      elitism_rate=elitism_rate,
                       # genetic operators sequence to be applied in each generation
                       operators_sequence=[
                           SubtreeCrossover(probability=0.8, arity=2),

@@ -70,20 +70,19 @@ def analyze(d, regression):
 
 
 def analyze_regression(regression_dir):
-    raise NotImplementedError
-    # results = []
-    # for d in get_dirs(regression_dir):
-    #     results.append(get_run_result(d))
-    # results_to_plot = [r for r in results if r is not None]
-    # # TODO show more than 4?
-    # results_to_plot = results_to_plot[:6]
-    #
-    # fig, ax = plt.subplots(len(results_to_plot), 1, figsize=(10, 10))
-    # for (index, axes) in enumerate(ax):
-    #     plot_single_run(axes, results_to_plot[index])
-    # axes.legend(loc='lower left')
-    # fig.tight_layout()
-    # plt.show()
+    results = []
+    for d in get_dirs(regression_dir):
+        results.append(get_run_result(d))
+    results_to_plot = [r for r in results if r is not None]
+    # TODO show more than 4?
+    results_to_plot = results_to_plot[:6]
+
+    fig, ax = plt.subplots(len(results_to_plot), 1, figsize=(10, 10))
+    for (index, axes) in enumerate(ax):
+        plot_single_run(axes, results_to_plot[index])
+    axes.legend(loc='lower left')
+    fig.tight_layout()
+    plt.show()
 
 
 if __name__ == "__main__":

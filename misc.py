@@ -1,8 +1,11 @@
+import argparse
 import os
 import shutil
-from pathlib import Path
-import torch
+import re
 import logging
+from pathlib import Path
+
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -63,3 +66,33 @@ def get_scratch_dir():
         p = Path('scratch')
         p.mkdir(exist_ok=True)
         return p
+
+
+def create_run_dir(all_runs_dir, run_name):
+    # helper function for run.sh
+
+    p = Path(all_runs_dir)
+    p.mkdir(exist_ok=True)
+
+    current_max = 0
+    for run_dir in p.glob('run_*'):
+        run_num = int(re.match('run_(\d+).*', run_dir.stem).group(1))
+        if run_num > current_max:
+            current_max = run_num
+    if run_name:
+        run_name = '_' + run_name
+    run_p = p / (f'run_{current_max + 1}{run_name}')
+    run_p.mkdir()
+
+    print(run_p)
+
+
+if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                         description="Internal script, shouldn't be run by users")
+    arg_parser.add_argument("--create-run-dir-all-runs", help=argparse.SUPPRESS)
+    arg_parser.add_argument("--create-run-dir-run-name", help=argparse.SUPPRESS, default='')
+    args = arg_parser.parse_args()
+
+    if args.create_run_dir_all_runs:
+        create_run_dir(args.create_run_dir_all_runs, args.create_run_dir_run_name)

@@ -9,3 +9,4 @@ TODOS.txt
 persist.bak
 persist.dat
 persist.dir
+slurm-*.out

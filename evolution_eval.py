@@ -20,11 +20,13 @@ class Evaluator(SimpleIndividualEvaluator):
     Compute the fitness of an individual.
     """
 
-    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images,
+    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images, patch_ratio_x, patch_ratio_y,
                  threshold_size_ratio, threshold_confidence):
         super().__init__()
         self.batch_size = batch_size
         self.num_of_images_threads = num_of_images_threads
+        self.ratio_x = patch_ratio_x
+        self.ratio_y = patch_ratio_y
 
         data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
                        threshold_confidence)
@@ -36,8 +38,6 @@ class Evaluator(SimpleIndividualEvaluator):
 
         # TODO move to main.py
         self.num_of_images_to_dump = 2
-        self.ratio_x = 0.4
-        self.ratio_y = 0.4
 
     def _evaluate_individual(self, individual):
         """
@@ -78,7 +78,7 @@ class Evaluator(SimpleIndividualEvaluator):
             self.dump_images(i, individual.gen, img_name, fitness)
         shutil.rmtree(scratch_dir)
 
-        self.dump_ind(individual, fitness)
+        self.dump_ind(individual, fitness, model_fail_rate, avg_prob_diff, y, y_hat, probs)
 
         logger.info(f'{self.get_gen_id(individual)} : fitness is {fitness:.4f}')
         return fitness
@@ -130,12 +130,17 @@ class Evaluator(SimpleIndividualEvaluator):
             orig = Path(img_name)
             shutil.copy(img_name, p / f'{orig.stem}__fitness_{fitness:.3f}{orig.suffix}')
 
-    def dump_ind(self, individual, fitness):
+    def dump_ind(self, individual, fitness, model_fail_rate, avg_prob_diff, y, y_hat, probs):
         p = Path('runs') / 'dump' / 'population' / f'gen_{individual.gen}'
         p.mkdir(parents=True, exist_ok=True)
         with open(p / (self.get_gen_id(individual) + '.log'), 'w') as f:
-            f.write(f'fitness: {fitness}\n')
             f.write(f'gen: {individual.gen} , id: {individual.id}\n')
+            f.write(f'fitness: {fitness}\n')
+            f.write(f'    model_fail_rate: {model_fail_rate}    ,   avg_prob_diff: {avg_prob_diff}\n')
+            f.write(f'    y     : {y}\n')
+            f.write(f'    y_hat : {y_hat}\n')
+            f.write(f'    probs (orig): {self.image_probs}\n')
+            f.write(f'    probs (ind) : {probs}\n')
             f.write(f'cloned from: {individual.cloned_from}\n')
             f.write(f'tree size: {individual.size()}\n')
             f.write(f'tree depth: {individual.depth()}\n')
