@@ -54,7 +54,7 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
         random_seed=random_seed,  # TODO allow free seeding
         termination_checker=ThresholdFromTargetTerminationChecker(optimal=1, threshold=0.001),
         statistics=BestAverageWorstSizeTreeStatistics(
-            format_string='fitness: best {}, worst {}, average {}. average size {}')
+            format_string='fitness: best {:.4f}, worst {:.4f}, average {:.4f}. average size {}')
     )
 
     # evolve the generated initial population

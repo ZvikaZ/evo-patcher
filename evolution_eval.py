@@ -36,8 +36,8 @@ class Evaluator(SimpleIndividualEvaluator):
 
         # TODO move to main.py
         self.num_of_images_to_dump = 2
-        self.ratio_x = 0.3
-        self.ratio_y = 0.3
+        self.ratio_x = 0.4
+        self.ratio_y = 0.4
 
     def _evaluate_individual(self, individual):
         """
@@ -63,6 +63,8 @@ class Evaluator(SimpleIndividualEvaluator):
             (scratch_dir / label).mkdir(exist_ok=True, parents=True)
             img_names.append(self.apply_patches(individual, img_result['img'], img_result['bb'], scratch_dir / label))
 
+        del individual.execute_cache
+
         y, y_hat, probs = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size,
                                        self.num_of_images_threads)
 
@@ -78,7 +80,7 @@ class Evaluator(SimpleIndividualEvaluator):
 
         self.dump_ind(individual, fitness)
 
-        logger.info(f'{self.get_gen_id(individual)} : fitness is {fitness}')
+        logger.info(f'{self.get_gen_id(individual)} : fitness is {fitness:.4f}')
         return fitness
 
     def apply_patches(self, individual, img, xyxy, label_dir):
@@ -114,6 +116,8 @@ class Evaluator(SimpleIndividualEvaluator):
         key = (individual, x, y)
         if key not in individual.execute_cache:
             individual.execute_cache[key] = individual.execute(x=x, y=y)
+        else:
+            logger.info("USING CACHE")  # TODO if it's never printed, delete this mechanism
         return individual.execute_cache[key]
 
     def get_gen_id(self, individual):
@@ -124,7 +128,7 @@ class Evaluator(SimpleIndividualEvaluator):
             p = Path('runs') / 'dump' / 'patches' / f'gen_{gen}'
             p.mkdir(parents=True, exist_ok=True)
             orig = Path(img_name)
-            shutil.copy(img_name, p / f'{orig.stem}__fitness_{fitness:.2f}{orig.suffix}')
+            shutil.copy(img_name, p / f'{orig.stem}__fitness_{fitness:.3f}{orig.suffix}')
 
     def dump_ind(self, individual, fitness):
         p = Path('runs') / 'dump' / 'population' / f'gen_{individual.gen}'

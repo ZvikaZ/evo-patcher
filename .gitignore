@@ -1,7 +1,11 @@
 .idea/
 __pycache__/
+snapshots/
 runs/
 run.log
 *.pt
 pycharm_session_*.log
 TODOS.txt
+persist.bak
+persist.dat
+persist.dir

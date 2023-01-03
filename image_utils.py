@@ -1,5 +1,6 @@
 from pathlib import Path
 import logging
+import shelve
 
 import torch
 
@@ -9,57 +10,64 @@ from misc import get_device, dump_images
 
 logger = logging.getLogger(__name__)
 
+SHELVE_FILE = "persist"
+
 
 def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
     dataset = ImageNetSomeFiles(root=root,
                                 transform=model.preprocess,
                                 imagenet_data=imagenet_data)
-    data_loader = torch.utils.data.DataLoader(dataset,
-                                              batch_size=batch_size,
-                                              shuffle=True,
-                                              # TODO increasing num_workers to num_of_images_threads seems to cause problems
-                                              num_workers=0)
-    all_prob = torch.Tensor().to(model.device)
-    all_y = torch.Tensor().to(model.device)
-    all_y_hat = torch.Tensor().to(model.device)
-    for X, y in data_loader:
-        X = X.to(model.device)
-        y = y.to(model.device)
-        prob, y_hat = model.infer(X)
-        all_prob = torch.cat((all_prob, prob))
-        all_y = torch.cat((all_y, y))
-        all_y_hat = torch.cat((all_y_hat, y_hat))
+    try:
+        data_loader = torch.utils.data.DataLoader(dataset,
+                                                  batch_size=batch_size,
+                                                  shuffle=True,
+                                                  # TODO increasing num_workers to num_of_images_threads seems to cause problems
+                                                  num_workers=0)
+        all_prob = torch.Tensor().to(model.device)
+        all_y = torch.Tensor().to(model.device)
+        all_y_hat = torch.Tensor().to(model.device)
+        for X, y in data_loader:
+            X = X.to(model.device)
+            y = y.to(model.device)
+            prob, y_hat = model.infer(X)
+            all_prob = torch.cat((all_prob, prob))
+            all_y = torch.cat((all_y, y))
+            all_y_hat = torch.cat((all_y_hat, y_hat))
+    except torch.cuda.OutOfMemoryError:
+        logger.warning(f"torch.cuda.OutOfMemoryError - reducing batch size to {batch_size // 2}")
+        import gc
+        gc.collect()
+        torch.cuda.empty_cache()
+
+        all_y, all_y_hat, all_prob = infer_images(root, model, imagenet_data,
+                                                  batch_size=batch_size // 2,
+                                                  num_of_images_threads=num_of_images_threads)
 
     return all_y, all_y_hat, all_prob
 
 
 def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
             threshold_confidence):
-    # TODO: remove time...  (and logger?)
-    import time
-    start = time.process_time()
-
     torch.manual_seed(1)  # TODO move to main.py (and suggest removing)
     device = get_device()
 
-    logger.debug(f'{time.process_time() - start} : got device, loading models')
     resnext = models_wrapper.ResnextModel(device)
     yolo = models_wrapper.YoloModel(device)
 
-    logger.debug(f'{time.process_time() - start} : got models, loading imagenet')
-    imagenet_data = ImageNetWithIndices(imagenet_path,
-                                        transform=resnext.preprocess)
-    logger.debug(f'{time.process_time() - start} : got imagenet, loading data_loader')
+    with shelve.open(SHELVE_FILE) as shelve_db:
+        if 'imagenet_data' not in shelve_db:
+            logger.debug('Loading ImageNet')
+            shelve_db['imagenet_data'] = ImageNetWithIndices(imagenet_path,
+                                                             transform=resnext.preprocess)
+        imagenet_data = shelve_db['imagenet_data']
     data_loader = torch.utils.data.DataLoader(imagenet_data,
                                               batch_size=batch_size,
                                               shuffle=True,
                                               num_workers=num_of_images_threads)
 
-    logger.debug(f'{time.process_time() - start} : got data_loader, starting loop')
     images_indices = []
     probs = torch.Tensor().to(device)
     for X, y, indices in data_loader:
-        logger.debug(f'{time.process_time() - start} : data_loader iteration')
         X = X.to(device)
         y = y.to(device)
         prob, y_hat = resnext.infer(X)
