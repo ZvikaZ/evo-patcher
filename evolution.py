@@ -14,7 +14,7 @@ from evolution_func import *
 
 
 def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
-           random_seed, patch_ratio_x, patch_ratio_y, elitism_rate,
+           random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
            imagenet_path, batch_size, num_of_images, threshold_size_ratio, threshold_confidence):
     function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot]
     terminal_set = ['x', 'y']
@@ -28,9 +28,9 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
                                                         terminal_set=terminal_set,
                                                         function_set=function_set,
                                                         erc_range=(-1, 1),
-                                                        bloat_weight=0.0001),  # TODO is it enough?
+                                                        bloat_weight=bloat_weight),
                       population_size=population_size,
-                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size, num_of_images,
+                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
                                           patch_ratio_x, patch_ratio_y, threshold_size_ratio, threshold_confidence),
                       higher_is_better=maximization_problem,
                       elitism_rate=elitism_rate,

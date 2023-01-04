@@ -53,20 +53,23 @@ def plot_single_run(ax, r):
     ax.plot([], [], '.-', label='Average Sizes', color='tab:pink')
     ax.set_xlim(left=0)
     ax.set_ylim(bottom=0)
-    ax.set_ylim(top=min(1, max(r['bests']) * 2))
+    try:
+        ax.set_ylim(top=min(1, max(r['bests']) * 1.2))
+    except ValueError:
+        ax.set_ylim(top=0.5)
     ax.set_xlabel("Generation")
     ax.set_ylabel("Fitness")
     ax.set_title(r['run'])
 
     if WRITE_VALUES_ABOVE_POINTS:
         for x, y in zip(range(len(r['bests'])), r['bests']):
-            plt.annotate("{:.2f}".format(y),  # this is the text
-                         (x, y),  # these are the coordinates to position the label
-                         textcoords="offset points",  # how to position the text
-                         xytext=(0, 3),  # distance from text to points (x,y)
-                         ha='center',  # horizontal alignment can be left, right or center
-                         alpha=0.5,
-                         fontsize='small')
+            ax.annotate("{:.2f}".format(y),  # this is the text
+                        (x, y),  # these are the coordinates to position the label
+                        textcoords="offset points",  # how to position the text
+                        xytext=(0, 3),  # distance from text to points (x,y)
+                        ha='center',  # horizontal alignment can be left, right or center
+                        alpha=0.5,
+                        fontsize='small')
 
     ax2 = ax.twinx()
     ax2.set_ylabel("Average Sizes")

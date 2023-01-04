@@ -21,65 +21,36 @@ logger = logging.getLogger(__name__)
 SHELVE_FILE = "persist"
 
 
-def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
-    dataset = ImageNetSomeFiles(root=root,
-                                transform=model.preprocess,
-                                imagenet_data=imagenet_data)
-    try:
-        data_loader = torch.utils.data.DataLoader(dataset,
-                                                  batch_size=batch_size,
-                                                  shuffle=True,
-                                                  # TODO increasing num_workers to num_of_images_threads seems to cause problems
-                                                  num_workers=0)
-        all_prob = torch.Tensor().to(model.device)
-        all_y = torch.Tensor().to(model.device)
-        all_y_hat = torch.Tensor().to(model.device)
-        for X, y in data_loader:
-            X = X.to(model.device)
-            y = y.to(model.device)
-            prob, y_hat = model.infer(X)
-            all_prob = torch.cat((all_prob, prob))
-            all_y = torch.cat((all_y, y))
-            all_y_hat = torch.cat((all_y_hat, y_hat))
-    except torch.cuda.OutOfMemoryError:
-        logger.warning(f"torch.cuda.OutOfMemoryError - reducing batch size to {batch_size // 2}")
-        import gc
-        gc.collect()
-        torch.cuda.empty_cache()
-
-        all_y, all_y_hat, all_prob = infer_images(root, model, imagenet_data,
-                                                  batch_size=batch_size // 2,
-                                                  num_of_images_threads=num_of_images_threads)
-
-    return all_y, all_y_hat, all_prob
-
-
-def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
-            threshold_confidence):
-    torch.manual_seed(1)  # TODO move to main.py (and suggest removing)
-    device = get_device()
-
+def load_persisted(device, imagenet_path):
     with shelve.open(SHELVE_FILE) as shelve_db:
         if 'resnext' not in shelve_db:
-            logger.debug('Creating resnext model')
+            logger.debug('Creating ResNext model')
             shelve_db['resnext'] = models_wrapper.ResnextModel(device)
         if 'yolo' not in shelve_db:
-            logger.debug('Creating yolo model')
+            logger.debug('Creating Yolo model')
             shelve_db['yolo'] = models_wrapper.YoloModel(device)
+        if 'mask_rcnn' not in shelve_db:
+            logger.debug('Creating Mask RCNN model')
+            shelve_db['mask_rcnn'] = models_wrapper.MaskRCNN(device)
 
         resnext = shelve_db['resnext']
         yolo = shelve_db['yolo']
+        mask_rcnn = shelve_db['mask_rcnn']  # TODO either use or remove
 
         if 'imagenet_data' not in shelve_db:
             logger.debug('Loading ImageNet')
             shelve_db['imagenet_data'] = ImageNetWithIndices(imagenet_path,
                                                              transform=resnext.preprocess)
         imagenet_data = shelve_db['imagenet_data']
+    return imagenet_data, resnext, yolo, mask_rcnn
+
+
+def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, num_of_images_threads, resnext):
+    # keep only images that resnext is initially correct about them, and return the indices and resnext's confidence
     data_loader = torch.utils.data.DataLoader(imagenet_data,
                                               batch_size=batch_size,
                                               shuffle=True,
                                               num_workers=num_of_images_threads)
-
     images_indices = []
     probs = torch.Tensor().to(device)
     for X, y, indices in data_loader:
@@ -96,12 +67,12 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, thr
                     probs = torch.cat((probs, prob[i].unsqueeze(dim=0)))
         if len(images_indices) >= num_of_images * 4:  # we'll throw many images because of YOLO, so take more initially
             break
-
     assert len(images_indices) == len(probs)
+    return images_indices, probs
 
-    imgs_with_labels = [(imagenet_data.get_filepath(i), imagenet_data.get_label(i)) for i in images_indices]
-    dump_images(imgs_with_labels, "initial")  # TODO dump later, only what's passed
 
+def extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence, threshold_size_ratio, yolo):
+    # keep only images that yolo is confident about them, and get its results
     yolo_results = yolo.infer([img for img, label in imgs_with_labels])
     image_results = []
     image_probs = []
@@ -126,6 +97,24 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, thr
 
         if len(image_results) >= num_of_images:
             break
+    return image_probs, image_results
+
+
+def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
+            threshold_size_ratio, threshold_confidence):
+    torch.manual_seed(random_seed)
+    device = get_device()
+
+    imagenet_data, resnext, yolo, mask_rcnn = load_persisted(device, imagenet_path)
+
+    images_indices, probs = extract_resnext_correct(batch_size, device, imagenet_data, num_of_images,
+                                                    num_of_images_threads, resnext)
+
+    imgs_with_labels = [(imagenet_data.get_filepath(i), imagenet_data.get_label(i)) for i in images_indices]
+    dump_images(imgs_with_labels, "initial")  # TODO dump later, only what's passed
+
+    image_probs, image_results = extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence,
+                                              threshold_size_ratio, yolo)
 
     return {
         'device': device,
@@ -134,3 +123,32 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, thr
         'image_results': image_results,
         'image_probs': torch.Tensor(image_probs).to(device),
     }
+
+
+def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
+    dataset = ImageNetSomeFiles(root=root,
+                                transform=model.preprocess,
+                                imagenet_data=imagenet_data)
+    try:
+        data_loader = torch.utils.data.DataLoader(dataset,
+                                                  batch_size=batch_size,
+                                                  shuffle=True,
+                                                  # TODO increasing num_workers to num_of_images_threads seems to cause problems
+                                                  num_workers=0)
+        all_prob = torch.Tensor().to(model.device)
+        all_y = torch.Tensor().to(model.device)
+        all_y_hat = torch.Tensor().to(model.device)
+        for X, y in data_loader:
+            X = X.to(model.device)
+            y = y.to(model.device)
+            prob, y_hat = model.infer(X)
+            all_prob = torch.cat((all_prob, prob))
+            all_y = torch.cat((all_y, y))
+            all_y_hat = torch.cat((all_y_hat, y_hat))
+    except torch.cuda.OutOfMemoryError:
+        logger.warning(f"torch.cuda.OutOfMemoryError - reducing batch size to {batch_size // 2}")
+        all_y, all_y_hat, all_prob = infer_images(root, model, imagenet_data,
+                                                  batch_size=batch_size // 2,
+                                                  num_of_images_threads=num_of_images_threads)
+
+    return all_y, all_y_hat, all_prob

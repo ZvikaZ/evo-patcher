@@ -1,4 +1,5 @@
 import argparse
+import torch
 
 from evolution import evolve
 from misc import set_logger
@@ -20,6 +21,7 @@ if __name__ == "__main__":
     evolution_group.add_argument("--population-size", '-p', type=int, default=300)
     evolution_group.add_argument("--max-generation", '-g', type=int, default=250)
     evolution_group.add_argument("--creation-max-depth", type=int, default=4)
+    evolution_group.add_argument("--bloat-weight", type=float, default=0.0001)  # TODO
 
     images_group = arg_parser.add_argument_group("Images reading options")
     images_group.add_argument("--num-of-images-threads", type=int, default=4)  # TODO increase?
@@ -43,6 +45,7 @@ if __name__ == "__main__":
            patch_ratio_x=args.patch_ratio_x,
            patch_ratio_y=args.patch_ratio_y,
            elitism_rate=args.elitism_rate,
+           bloat_weight=args.bloat_weight,
            imagenet_path=args.imagenet_path,
            batch_size=args.batch_size,
            num_of_images=args.num_of_images,

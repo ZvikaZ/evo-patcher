@@ -20,16 +20,16 @@ class Evaluator(SimpleIndividualEvaluator):
     Compute the fitness of an individual.
     """
 
-    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images, patch_ratio_x, patch_ratio_y,
-                 threshold_size_ratio, threshold_confidence):
+    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
+                 patch_ratio_x, patch_ratio_y, threshold_size_ratio, threshold_confidence):
         super().__init__()
         self.batch_size = batch_size
         self.num_of_images_threads = num_of_images_threads
         self.ratio_x = patch_ratio_x
         self.ratio_y = patch_ratio_y
 
-        data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, threshold_size_ratio,
-                       threshold_confidence)
+        data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
+                       threshold_size_ratio, threshold_confidence)
         self.device = data['device']
         self.resnext = data['resnext']
         self.imagenet_data = data['imagenet_data']
