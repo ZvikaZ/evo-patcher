@@ -83,7 +83,7 @@ class Evaluator(SimpleIndividualEvaluator):
 
         self.dump_ind(individual, fitness, model_fail_rate, avg_prob_diff, y, y_hat, probs)
 
-        logger.info(f'{self.get_gen_id(individual)} : fitness is {fitness:.4f}')
+        logger.debug(f'{self.get_gen_id(individual)} : fitness is {fitness:.4f}')
         return fitness
 
     def apply_patches(self, individual, img, xyxy, label_dir):

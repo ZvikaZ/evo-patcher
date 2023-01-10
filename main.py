@@ -1,7 +1,6 @@
 import argparse
-import torch
 
-from evolution import evolve
+from attack import attack
 from misc import set_logger
 
 logger = set_logger(__file__)
@@ -28,7 +27,10 @@ if __name__ == "__main__":
     images_group.add_argument("--imagenet-path", default='/cs_storage/public_datasets/ImageNet')
     images_group.add_argument("--batch-size", type=int, default=100)  # 500 is too big to always fit in memory
     images_group.add_argument("--num-of-images", '-n', type=int, default=40)
-    images_group.add_argument("--classes", nargs='*', default=['freight car', 'passenger car', 'sports car', 'streetcar', ])
+    images_group.add_argument("--classes", nargs='*',
+                              default=['freight car', 'passenger car', 'sports car', 'streetcar', ])
+    images_group.add_argument("--single-image", '-1', action='store_true',
+                              help="Perform a single image evolution (instead of Universal); ignores '--classes'")
 
     yolo_group = arg_parser.add_argument_group("Yolo options")
     images_group.add_argument("--threshold-size-ratio", type=float, default=0.1)
@@ -37,7 +39,8 @@ if __name__ == "__main__":
     args = arg_parser.parse_args()
     logger.debug(args)
 
-    evolve(creation_max_depth=args.creation_max_depth,
+    attack(single_image=args.single_image,
+           creation_max_depth=args.creation_max_depth,
            population_size=args.population_size,
            num_of_evolve_threads=args.num_of_evolve_threads,
            num_of_images_threads=args.num_of_images_threads,

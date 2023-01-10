@@ -15,9 +15,16 @@ from eckity.termination_checkers.threshold_from_target_termination_checker impor
 from evolution_eval import Evaluator
 from evolution_func import *
 
+logger = logging.getLogger(__name__)
+
 
 def del_some_images(sender, data_dict):
-    ids_to_keep = [str(sender.best_of_gen.id), str(sender.worst_of_gen.id)]
+    try:
+        ids_to_keep = [str(sender.best_of_gen.id), str(sender.worst_of_gen.id)]
+    except AttributeError:
+        # TODO this is actually a bug on EcKity side, it doesn't assign these values of terminated immediately after first gen
+        logger.debug("'sender' doesn't have best_of_gen, or worst_of_gen ; not deleting any image")
+        return
     r = re.compile(r'.*__gen_.*_ind_(.*)__.*')
     p = Path('runs') / 'patches' / f'gen_{sender.generation_num}'
     for png in p.glob('*.png'):
@@ -25,22 +32,31 @@ def del_some_images(sender, data_dict):
             png.unlink()
 
 
-def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
-           random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
+def evolve(individuals, creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads,
+           max_generation, random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
            imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence):
     function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot, t_sigmoid]
     terminal_set = ['x', 'y']
 
     maximization_problem = True
 
+    # first image is using RampedHalfAndHalfCreator ; after that, each image uses previous image's last population
+    if individuals:
+        logger.debug("Using previous individuals")
+        creators = None
+    else:
+        logger.debug("Creating new individuals")
+        creators = RampedHalfAndHalfCreator(init_depth=(2, creation_max_depth),
+                                            terminal_set=terminal_set,
+                                            function_set=function_set,
+                                            erc_range=(-1, 1),
+                                            bloat_weight=bloat_weight)
+
     # Initialize the evolutionary algorithm
     # TODO maximal growth factor of 4.0 (from FINCH) or max tree depth of 17 (Koza)
     algo = SimpleEvolution(
-        Subpopulation(creators=RampedHalfAndHalfCreator(init_depth=(2, creation_max_depth),
-                                                        terminal_set=terminal_set,
-                                                        function_set=function_set,
-                                                        erc_range=(-1, 1),
-                                                        bloat_weight=bloat_weight),
+        Subpopulation(creators=creators,
+                      individuals=individuals,
                       population_size=population_size,
                       evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size, num_of_images, classes,
                                           random_seed, patch_ratio_x, patch_ratio_y,
@@ -68,10 +84,12 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
     )
 
     # don't keep all dumped images - only best and worst fitness (except from the initial population)
-    algo.register('after_generation', del_some_images)
+    # algo.register('after_generation', del_some_images)
 
     # evolve the generated initial population
     algo.evolve()
+
+    return algo
 
 
 if __name__ == '__main__':
