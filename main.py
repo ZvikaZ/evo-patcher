@@ -28,7 +28,7 @@ if __name__ == "__main__":
     images_group.add_argument("--imagenet-path", default='/cs_storage/public_datasets/ImageNet')
     images_group.add_argument("--batch-size", type=int, default=100)  # 500 is too big to always fit in memory
     images_group.add_argument("--num-of-images", '-n', type=int, default=40)
-    images_group.add_argument("--classes", default=['freight car', 'passenger car', 'sports car', 'streetcar', ])
+    images_group.add_argument("--classes", nargs='*', default=['freight car', 'passenger car', 'sports car', 'streetcar', ])
 
     yolo_group = arg_parser.add_argument_group("Yolo options")
     images_group.add_argument("--threshold-size-ratio", type=float, default=0.1)

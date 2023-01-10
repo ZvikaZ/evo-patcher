@@ -50,8 +50,12 @@ def load_persisted(device, imagenet_path):
 def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, classes, num_of_images_threads, resnext):
     # keeps only images that resnext is initially correct about them, and return the indices and resnext's confidence
 
-    target_indices = [i for i, target in enumerate(imagenet_data.targets) if imagenet_data.get_n_label(target) in classes]
-    imagenet_subset = Subset(imagenet_data, target_indices)
+    if classes:
+        target_indices = [i for i, target in enumerate(imagenet_data.targets) if imagenet_data.get_n_label(target) in classes]
+        imagenet_subset = Subset(imagenet_data, target_indices)
+    else:
+        logger.debug('Using all classes')
+        imagenet_subset = imagenet_data
 
     data_loader = torch.utils.data.DataLoader(imagenet_subset,
                                               batch_size=batch_size,

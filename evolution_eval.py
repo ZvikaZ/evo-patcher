@@ -7,6 +7,7 @@ from pathlib import Path
 
 import torch
 import torchvision.io
+from torch import sigmoid
 from eckity.evaluators.simple_individual_evaluator import SimpleIndividualEvaluator
 
 from image_utils import prepare, infer_images
@@ -72,7 +73,7 @@ class Evaluator(SimpleIndividualEvaluator):
         else:
             # all y are different from y_hat ; couldn't compute avg_prob_diff ;
             # it probably means that model_fail_rate is 1, and we won
-            logger.info(f'avg_prob_diff is nan ; fitness is only model_fail_rate: {model_fail_rate}')
+            logger.info(f'avg_prob_diff is nan ; fitness == model_fail_rate == {model_fail_rate}')
             fitness = model_fail_rate
         fitness = fitness.item()
 
@@ -105,14 +106,11 @@ class Evaluator(SimpleIndividualEvaluator):
         xx = xx.to(self.device)
         yy = yy.to(self.device)
         result = individual.execute(x=xx, y=yy)
-        try:
-            return (result > 0).int() * 255
-        except AttributeError:
+        if not isinstance(result, torch.Tensor):
             assert type(result) == float
-            if result > 0:
-                return torch.ones_like(xx)
-            else:
-                return torch.zeros_like(xx)
+            result = torch.full_like(xx, result, dtype=float)
+        result = sigmoid(result)
+        return (result > 0.5).int() * 255
 
     def get_gen_id(self, individual):
         return f'gen_{individual.gen}_ind_{individual.id}'

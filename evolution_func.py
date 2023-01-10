@@ -51,6 +51,11 @@ def t_hypot(x, y):
     return torch.hypot(tensorize(x), tensorize(y))
 
 
+def t_sigmoid(x):
+    """sigmoid(x)"""
+    return torch.sigmoid(tensorize(x))
+
+
 def t_iflte(x, y, z, w):
     """if x <= y return z else return w"""
     return torch.where(tensorize(x) <= 0, y, z)

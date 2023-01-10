@@ -28,7 +28,7 @@ def del_some_images(sender, data_dict):
 def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
            random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
            imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence):
-    function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot]
+    function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot, t_sigmoid]
     terminal_set = ['x', 'y']
 
     maximization_problem = True

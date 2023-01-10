@@ -18,6 +18,14 @@ class Model(ABC):
         pass
 
     @staticmethod
+    def smart_squeeze(t):
+        # squeeze, but keep at least the batch dim
+        result = t.squeeze()
+        if not result.shape:
+            result = result.unsqueeze(dim=0)
+        return result
+
+    @staticmethod
     def free_cuda_memory():
         gc.collect()
         torch.cuda.empty_cache()
@@ -40,7 +48,7 @@ class ResnextModel(Model):
         output = self.softmax(logits)
         prob, y_hat = output.topk(k=1)
         assert prob.shape[-1] == y_hat.shape[-1] == 1
-        return prob.squeeze(), y_hat.squeeze()
+        return self.smart_squeeze(prob), self.smart_squeeze(y_hat)
 
 
 class MaskRCNN(Model):
