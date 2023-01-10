@@ -18,16 +18,17 @@ if __name__ == "__main__":
     evolution_group.add_argument("--patch-ratio-y", type=float, default=0.4)
     evolution_group.add_argument("--elitism-rate", type=float, default=0)
     evolution_group.add_argument("--num-of-evolve-threads", type=int, default=1)  # TODO 2?
-    evolution_group.add_argument("--population-size", '-p', type=int, default=300)
+    evolution_group.add_argument("--population-size", '-p', type=int, default=500)
     evolution_group.add_argument("--max-generation", '-g', type=int, default=250)
     evolution_group.add_argument("--creation-max-depth", type=int, default=4)
-    evolution_group.add_argument("--bloat-weight", type=float, default=0.0001)  # TODO
+    evolution_group.add_argument("--bloat-weight", '-w', type=float, default=0.0001)  # TODO
 
     images_group = arg_parser.add_argument_group("Images reading options")
     images_group.add_argument("--num-of-images-threads", type=int, default=4)  # TODO increase?
     images_group.add_argument("--imagenet-path", default='/cs_storage/public_datasets/ImageNet')
     images_group.add_argument("--batch-size", type=int, default=100)  # 500 is too big to always fit in memory
     images_group.add_argument("--num-of-images", '-n', type=int, default=40)
+    images_group.add_argument("--classes", default=['freight car', 'passenger car', 'sports car', 'streetcar', ])
 
     yolo_group = arg_parser.add_argument_group("Yolo options")
     images_group.add_argument("--threshold-size-ratio", type=float, default=0.1)
@@ -49,5 +50,6 @@ if __name__ == "__main__":
            imagenet_path=args.imagenet_path,
            batch_size=args.batch_size,
            num_of_images=args.num_of_images,
+           classes=args.classes,
            threshold_size_ratio=args.threshold_size_ratio,
            threshold_confidence=args.threshold_confidence)

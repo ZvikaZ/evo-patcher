@@ -1,3 +1,6 @@
+import re
+from pathlib import Path
+
 from eckity.algorithms.simple_evolution import SimpleEvolution
 from eckity.breeders.simple_breeder import SimpleBreeder
 from eckity.creators.gp_creators.ramped_hh import RampedHalfAndHalfCreator
@@ -13,9 +16,18 @@ from evolution_eval import Evaluator
 from evolution_func import *
 
 
+def del_some_images(sender, data_dict):
+    ids_to_keep = [str(sender.best_of_gen.id), str(sender.worst_of_gen.id)]
+    r = re.compile(r'.*__gen_.*_ind_(.*)__.*')
+    p = Path('runs') / 'patches' / f'gen_{sender.generation_num}'
+    for png in p.glob('*.png'):
+        if r.match(png.stem).group(1) not in ids_to_keep:
+            png.unlink()
+
+
 def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads, max_generation,
            random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
-           imagenet_path, batch_size, num_of_images, threshold_size_ratio, threshold_confidence):
+           imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence):
     function_set = [t_add, t_mul, t_sub, t_div, t_iflte, t_sin, t_cos, t_atan2, t_hypot]
     terminal_set = ['x', 'y']
 
@@ -30,8 +42,9 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
                                                         erc_range=(-1, 1),
                                                         bloat_weight=bloat_weight),
                       population_size=population_size,
-                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
-                                          patch_ratio_x, patch_ratio_y, threshold_size_ratio, threshold_confidence),
+                      evaluator=Evaluator(num_of_images_threads, imagenet_path, batch_size, num_of_images, classes,
+                                          random_seed, patch_ratio_x, patch_ratio_y,
+                                          threshold_size_ratio, threshold_confidence),
                       higher_is_better=maximization_problem,
                       elitism_rate=elitism_rate,
                       # genetic operators sequence to be applied in each generation
@@ -53,6 +66,9 @@ def evolve(creation_max_depth, population_size, num_of_evolve_threads, num_of_im
         statistics=BestAverageWorstSizeTreeStatistics(
             format_string='fitness: best {:.4f}, worst {:.4f}, average {:.4f}. average size {}')
     )
+
+    # don't keep all dumped images - only best and worst fitness (except from the initial population)
+    algo.register('after_generation', del_some_images)
 
     # evolve the generated initial population
     algo.evolve()

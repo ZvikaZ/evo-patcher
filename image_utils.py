@@ -1,12 +1,14 @@
+import shutil
 from pathlib import Path
 import logging
 import shelve
 
 import torch
+from torch.utils.data import Subset
 
 import models_wrapper
 from datasets import ImageNetWithIndices, ImageNetSomeFiles
-from misc import get_device, dump_images
+from misc import get_device, initial_dump_images
 
 # required for yolo unpickling
 import sys
@@ -45,9 +47,13 @@ def load_persisted(device, imagenet_path):
     return imagenet_data, resnext, yolo, mask_rcnn
 
 
-def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, num_of_images_threads, resnext):
-    # keep only images that resnext is initially correct about them, and return the indices and resnext's confidence
-    data_loader = torch.utils.data.DataLoader(imagenet_data,
+def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, classes, num_of_images_threads, resnext):
+    # keeps only images that resnext is initially correct about them, and return the indices and resnext's confidence
+
+    target_indices = [i for i, target in enumerate(imagenet_data.targets) if imagenet_data.get_n_label(target) in classes]
+    imagenet_subset = Subset(imagenet_data, target_indices)
+
+    data_loader = torch.utils.data.DataLoader(imagenet_subset,
                                               batch_size=batch_size,
                                               shuffle=True,
                                               num_workers=num_of_images_threads)
@@ -100,21 +106,26 @@ def extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence, t
     return image_probs, image_results
 
 
-def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
+def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, classes, random_seed,
             threshold_size_ratio, threshold_confidence):
     torch.manual_seed(random_seed)
     device = get_device()
 
+    shutil.rmtree('runs', ignore_errors=True)
+
     imagenet_data, resnext, yolo, mask_rcnn = load_persisted(device, imagenet_path)
 
-    images_indices, probs = extract_resnext_correct(batch_size, device, imagenet_data, num_of_images,
+    images_indices, probs = extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, classes,
                                                     num_of_images_threads, resnext)
 
     imgs_with_labels = [(imagenet_data.get_filepath(i), imagenet_data.get_label(i)) for i in images_indices]
-    dump_images(imgs_with_labels, "initial")  # TODO dump later, only what's passed
 
     image_probs, image_results = extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence,
                                               threshold_size_ratio, yolo)
+
+    initial_dump_images(image_results)
+
+    logger.debug(f"Running on {len(image_results)} images: {[im['img'] for im in image_results]}")
 
     return {
         'device': device,

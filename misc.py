@@ -40,18 +40,12 @@ def set_logger(logger_name, debug=True, logfile='run.log'):
     return logging.getLogger(logger_name)
 
 
-def dump_images(imgs, name=None):
-    # TODO revise this
-    p = Path('runs') / Path('dump')
-    if name == "initial":
-        shutil.rmtree('runs', ignore_errors=True)  # TODO move this to better place
-    if name:
-        p = p / name
+def initial_dump_images(imgs):
+    p = Path('runs') / Path('initial')
     p.mkdir(parents=True, exist_ok=True)
-    for img, label in imgs:
-        label_p = p / label
-        label_p.mkdir(parents=True, exist_ok=True)
-        shutil.copy(img, label_p / (Path(img).stem + "__" + label + Path(img).suffix))
+    for img_d in imgs:
+        img = img_d['img']
+        shutil.copy(img, p / (Path(img).stem + "__" + img_d['label'] + Path(img).suffix))
 
 
 def get_scratch_dir():

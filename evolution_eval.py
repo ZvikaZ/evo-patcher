@@ -20,7 +20,7 @@ class Evaluator(SimpleIndividualEvaluator):
     Compute the fitness of an individual.
     """
 
-    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
+    def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images, classes, random_seed,
                  patch_ratio_x, patch_ratio_y, threshold_size_ratio, threshold_confidence):
         super().__init__()
         self.batch_size = batch_size
@@ -28,7 +28,7 @@ class Evaluator(SimpleIndividualEvaluator):
         self.ratio_x = patch_ratio_x
         self.ratio_y = patch_ratio_y
 
-        data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, random_seed,
+        data = prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, classes, random_seed,
                        threshold_size_ratio, threshold_confidence)
         self.device = data['device']
         self.resnext = data['resnext']
@@ -36,8 +36,7 @@ class Evaluator(SimpleIndividualEvaluator):
         self.image_results = data['image_results']
         self.image_probs = data['image_probs']
 
-        # TODO move to main.py
-        self.num_of_images_to_dump = 2
+        self.num_of_images_to_dump = 8
 
     def _evaluate_individual(self, individual):
         """
@@ -119,14 +118,15 @@ class Evaluator(SimpleIndividualEvaluator):
         return f'gen_{individual.gen}_ind_{individual.id}'
 
     def dump_images(self, i, gen, img_name, fitness):
-        if i < self.num_of_images_to_dump:
-            p = Path('runs') / 'dump' / 'patches' / f'gen_{gen}'
+        # note that most of these images will be later deleted by del_some_images(..)
+        if gen == 0 or i < self.num_of_images_to_dump:
+            p = Path('runs') / 'patches' / f'gen_{gen}'
             p.mkdir(parents=True, exist_ok=True)
             orig = Path(img_name)
             shutil.copy(img_name, p / f'{orig.stem}__fitness_{fitness:.3f}{orig.suffix}')
 
     def dump_ind(self, individual, fitness, model_fail_rate, avg_prob_diff, y, y_hat, probs):
-        p = Path('runs') / 'dump' / 'population' / f'gen_{individual.gen}'
+        p = Path('runs') / 'population' / f'gen_{individual.gen}'
         p.mkdir(parents=True, exist_ok=True)
         with open(p / (self.get_gen_id(individual) + '.log'), 'w') as f:
             f.write(f'gen: {individual.gen} , id: {individual.id}\n')
@@ -141,6 +141,7 @@ class Evaluator(SimpleIndividualEvaluator):
             f.write(f'applied operators : {individual.applied_operators}\n')
             f.write(f'tree size  : {individual.size()}\n')
             f.write(f'tree depth : {individual.depth()}\n')
-            f.write('code:\n')
-            f.write(str(individual))
+            f.write('code:\n\n')
+            f.write('from evolution_func import *\n\n\n')
+            f.write(individual.__str__(use_python_syntax=True))
             f.write('\n')

@@ -22,7 +22,7 @@ def get_run_result(d):
 
     # INFO:eckity.statistics.best_avg_worst_size_tree_statistics:fitness: best 0.14137016236782074, worst 0.0029264071490615606, average 0.08269203132484108. average size 43.95
     r = re.compile(
-        r'.*best_avg_worst_size_tree_statistics:fitness: best (\d+\.\d+), worst (\d+\.\d+), average (\d+\.\d+). average size (\d+\.\d+)')
+        r'.*best_avg_worst_size_tree_statistics:fitness: best (-?\d+\.\d+), worst (-?\d+\.\d+), average (-?\d+\.\d+). average size (\d+\.\d+)')
     bests = [float(r.match(l).group(1)) for l in lines if r.match(l)]
     worst = [float(r.match(l).group(2)) for l in lines if r.match(l)]
     average = [float(r.match(l).group(3)) for l in lines if r.match(l)]
@@ -45,25 +45,42 @@ def analyze_single_run(d):
     plt.show()
 
 
-def plot_single_run(ax, r):
-    out = ax.plot(r['bests'], '.-', label='best')
-    ax.plot(r['worst'], '.-', label='worst')
-    ax.plot(r['average'], '.-', alpha=0.6, label='average')
+def plot_single_run(ax, r, ranges=None):
+    out = ax.plot(r['bests'], '.-', label='Best')
+    ax.plot(r['worst'], '.-', label='Worst')
+    ax.plot(r['average'], '.-', alpha=0.6, label='Average')
     # # plot nothing, just add to our legend
     ax.plot([], [], '.-', label='Average Sizes', color='tab:pink')
-    ax.set_xlim(left=0)
-    ax.set_ylim(bottom=0)
-    try:
-        ax.set_ylim(top=min(1, max(r['bests']) * 1.2))
-    except ValueError:
-        ax.set_ylim(top=0.5)
+    if ranges:
+        ax.set_xlim(left=0, right=ranges['generations'])
+        ax.set_ylim(bottom=ranges['min_worst'], top=min(1, ranges['max_best'] * 1.2))
+    else:
+        ax.set_xlim(left=0)
+        ax.set_ylim(bottom=0)
+        try:
+            ax.set_ylim(top=min(1, max(r['bests']) * 1.2))
+        except ValueError:
+            ax.set_ylim(top=0.5)
     ax.set_xlabel("Generation")
     ax.set_ylabel("Fitness")
     ax.set_title(r['run'])
 
     if WRITE_VALUES_ABOVE_POINTS:
+        i = 0
         for x, y in zip(range(len(r['bests'])), r['bests']):
-            ax.annotate("{:.2f}".format(y),  # this is the text
+            i += 1
+            # print numerical value for last point, and for every 10th one
+            if (len(r['bests']) - i) % 10 == 0:
+                label = "{:.3f}".format(y)
+            else:
+                label = ""
+            # if label != prev:
+            #     prev = label
+            # else:
+            #     # avoid consective similar values
+            #     label = ""
+
+            ax.annotate(label,  # this is the text
                         (x, y),  # these are the coordinates to position the label
                         textcoords="offset points",  # how to position the text
                         xytext=(0, 3),  # distance from text to points (x,y)
@@ -73,7 +90,8 @@ def plot_single_run(ax, r):
 
     ax2 = ax.twinx()
     ax2.set_ylabel("Average Sizes")
-    # ax2.set_ylim([0,1])
+    if ranges:
+        ax2.set_ylim(bottom=0, top=ranges['max_size'] * 1.1)
     ax2.plot(r['average_sizes'], '.-', label='Average Sizes', color='tab:pink')
     # create a separate legend
     # ax2.legend(loc=2)
@@ -88,21 +106,41 @@ def analyze(d, single_run):
         analyze_regression(d)
 
 
+def get_ranges(all_results_to_plot):
+    max_best = max([max(result['bests']) for result in all_results_to_plot if result['bests']])
+    min_worst = min([min(result['worst']) for result in all_results_to_plot if result['worst']])
+    max_size = max([max(result['average_sizes']) for result in all_results_to_plot if result['average_sizes']])
+    generations = max([len(result['bests']) for result in all_results_to_plot])
+    return {
+        'max_best': max_best,
+        'min_worst': min_worst,
+        'max_size': max_size,
+        'generations': generations,
+    }
+
+
 def analyze_regression(regression_dir):
     results = []
     for d in get_dirs(regression_dir):
         results.append(get_run_result(d))
     all_results_to_plot = [r for r in results if r is not None]
+    ranges = get_ranges(all_results_to_plot)
+    counter = 0
     while all_results_to_plot:
         results_to_plot = all_results_to_plot[:RESULTS_IN_PLOT]
         all_results_to_plot = all_results_to_plot[RESULTS_IN_PLOT:]
 
         fig, ax = plt.subplots(len(results_to_plot), 1, figsize=(10, 10))
-        for (index, axes) in enumerate(ax):
-            plot_single_run(axes, results_to_plot[index])
+        try:
+            for (index, axes) in enumerate(ax):
+                plot_single_run(axes, results_to_plot[index], ranges)
+        except TypeError:
+            plot_single_run(ax, results_to_plot[0], ranges)
         axes.legend(loc='lower left')
         fig.tight_layout()
         plt.show()
+        # fig.savefig(f'results_{counter}.png')
+        counter += 1
 
 
 if __name__ == "__main__":
