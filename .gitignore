@@ -2,6 +2,7 @@
 __pycache__/
 snapshots/
 runs/
+OLD/
 run.log
 *.pt
 pycharm_session_*.log
@@ -9,4 +10,8 @@ TODOS.txt
 persist.bak
 persist.dat
 persist.dir
+persist_cpu.bak
+persist_cpu.dat
+persist_cpu.dir
 slurm-*.out
+temp.txt

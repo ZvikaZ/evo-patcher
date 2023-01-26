@@ -15,6 +15,10 @@ def clean_clone(ind):
     result.cloned_from = []
     result.selected_by = []
     result.applied_operators = []
+    try:
+        result.set_fitness_not_evaluated()
+    except ValueError:
+        pass
     return result
 
 
@@ -58,12 +62,16 @@ def single_images_attack(creation_max_depth, population_size, num_of_evolve_thre
             # something more sophisticated?
             logger.debug('Saving individuals for next image')
             individuals = [clean_clone(ind) for ind in algo.population.sub_populations[0].individuals]
+        else:
+            logger.debug('Cleaning individuals for next image')
+            individuals = [clean_clone(ind) for ind in individuals]
         os.chdir(orig_dir)
 
 
 def attack(single_image, creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads,
            max_generation, random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
-           imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence):
+           imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence,
+           fail_weight, prob_weight, abs_prob):
     if single_image:
         # perform a Single-Image attack (on possibly many images)
         single_images_attack(creation_max_depth=creation_max_depth,
@@ -82,9 +90,11 @@ def attack(single_image, creation_max_depth, population_size, num_of_evolve_thre
                              classes=classes,
                              threshold_size_ratio=threshold_size_ratio,
                              threshold_confidence=threshold_confidence)
+        # TODO use here fail_weight, prob_weight, abs_prob
     else:
         # perform a Universal Attack
-        evolve(creation_max_depth=creation_max_depth,
+        evolve(individuals=None,
+               creation_max_depth=creation_max_depth,
                population_size=population_size,
                num_of_evolve_threads=num_of_evolve_threads,
                num_of_images_threads=num_of_images_threads,
@@ -99,4 +109,7 @@ def attack(single_image, creation_max_depth, population_size, num_of_evolve_thre
                num_of_images=num_of_images,
                classes=classes,
                threshold_size_ratio=threshold_size_ratio,
-               threshold_confidence=threshold_confidence)
+               threshold_confidence=threshold_confidence,
+               fail_weight=fail_weight,
+               prob_weight=prob_weight,
+               abs_prob=abs_prob)

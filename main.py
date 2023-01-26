@@ -2,6 +2,7 @@ import argparse
 
 from attack import attack
 from misc import set_logger
+from standalone import standalone
 
 logger = set_logger(__file__)
 
@@ -21,6 +22,9 @@ if __name__ == "__main__":
     evolution_group.add_argument("--max-generation", '-g', type=int, default=250)
     evolution_group.add_argument("--creation-max-depth", type=int, default=4)
     evolution_group.add_argument("--bloat-weight", '-w', type=float, default=0.0001)  # TODO
+    evolution_group.add_argument("--fail-weight", type=float, default=0.7)
+    evolution_group.add_argument("--prob-weight", type=float, default=0.3)
+    evolution_group.add_argument("--abs-prob", )
 
     images_group = arg_parser.add_argument_group("Images reading options")
     images_group.add_argument("--num-of-images-threads", type=int, default=4)  # TODO increase?
@@ -36,23 +40,38 @@ if __name__ == "__main__":
     images_group.add_argument("--threshold-size-ratio", type=float, default=0.1)
     images_group.add_argument("--threshold-confidence", type=float, default=0.8)
 
+    standalone_group = arg_parser.add_argument_group('Standalone patcher options')
+    standalone_group.add_argument("--standalone", action='store_true')
+    standalone_group.add_argument("--standalone-ind")
+    standalone_group.add_argument("--standalone-image")
+
     args = arg_parser.parse_args()
     logger.debug(args)
 
-    attack(single_image=args.single_image,
-           creation_max_depth=args.creation_max_depth,
-           population_size=args.population_size,
-           num_of_evolve_threads=args.num_of_evolve_threads,
-           num_of_images_threads=args.num_of_images_threads,
-           max_generation=args.max_generation,
-           random_seed=args.random_seed,
-           patch_ratio_x=args.patch_ratio_x,
-           patch_ratio_y=args.patch_ratio_y,
-           elitism_rate=args.elitism_rate,
-           bloat_weight=args.bloat_weight,
-           imagenet_path=args.imagenet_path,
-           batch_size=args.batch_size,
-           num_of_images=args.num_of_images,
-           classes=args.classes,
-           threshold_size_ratio=args.threshold_size_ratio,
-           threshold_confidence=args.threshold_confidence)
+    if not args.standalone:
+        attack(single_image=args.single_image,
+               creation_max_depth=args.creation_max_depth,
+               population_size=args.population_size,
+               num_of_evolve_threads=args.num_of_evolve_threads,
+               num_of_images_threads=args.num_of_images_threads,
+               max_generation=args.max_generation,
+               random_seed=args.random_seed,
+               patch_ratio_x=args.patch_ratio_x,
+               patch_ratio_y=args.patch_ratio_y,
+               elitism_rate=args.elitism_rate,
+               bloat_weight=args.bloat_weight,
+               imagenet_path=args.imagenet_path,
+               batch_size=args.batch_size,
+               num_of_images=args.num_of_images,
+               classes=args.classes,
+               threshold_size_ratio=args.threshold_size_ratio,
+               threshold_confidence=args.threshold_confidence,
+               fail_weight=args.fail_weight,
+               prob_weight=args.prob_weight,
+               abs_prob=args.abs_prob)
+    else:
+        # standalone mode
+        if args.standalone_ind and args.standalone_image:
+            standalone(args.standalone_ind, args.standalone_image, args.patch_ratio_x, args.patch_ratio_y)
+        else:
+            raise SystemExit('Standalone mode, but missing --standalone-ind or --standalone-image')

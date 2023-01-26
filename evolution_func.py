@@ -7,7 +7,10 @@ device = get_device()
 
 
 def tensorize(x):
-    return torch.tensor(x).float().to(device)
+    if isinstance(x, torch.Tensor):
+        return x.float().to(device)
+    else:
+        return torch.tensor(x).float().to(device)
 
 
 def t_add(x, y):

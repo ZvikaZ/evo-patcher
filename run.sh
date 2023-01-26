@@ -1,8 +1,9 @@
 #!/bin/bash
 
-#SBATCH --partition main			### specify partition name where to run a job. main: all nodes; gtx1080: 1080 gpu card nodes; rtx2080: 2080 nodes; teslap100: p100 nodes; titanrtx: titan nodes
+#SBATCH --partition main		### specify partition name where to run a job. main: all nodes; gtx1080: 1080 gpu card nodes; rtx2080: 2080 nodes; teslap100: p100 nodes; titanrtx: titan nodes
 #SBATCH --job-name patcher		### name of the job
 #SBATCH --gpus=1				### number of GPUs, allocating more than 1 requires IT team's permission
+#SBATCH --tmp=100G              ### Asks to allocate enough space on /scratch
 
 ##SBATCH --mail-user=zvikah@post.bgu.ac.il	### user's email for sending job status messages
 ##SBATCH --mail-type=END,FAIL			### conditions for sending the email. ALL,BEGIN,END,FAIL, REQUEU, NONE

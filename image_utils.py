@@ -4,7 +4,10 @@ import logging
 import shelve
 
 import torch
+import torchvision
 from torch.utils.data import Subset
+from torch import sigmoid
+from PIL import Image
 
 import models_wrapper
 from datasets import ImageNetWithIndices, ImageNetSomeFiles
@@ -24,6 +27,9 @@ SHELVE_FILE = "persist"
 
 
 def load_persisted(device, imagenet_path):
+    if device == 'cpu':
+        global SHELVE_FILE
+        SHELVE_FILE += '_cpu'
     with shelve.open(SHELVE_FILE) as shelve_db:
         if 'resnext' not in shelve_db:
             logger.debug('Creating ResNext model')
@@ -31,27 +37,24 @@ def load_persisted(device, imagenet_path):
         if 'yolo' not in shelve_db:
             logger.debug('Creating Yolo model')
             shelve_db['yolo'] = models_wrapper.YoloModel(device)
-        if 'mask_rcnn' not in shelve_db:
-            logger.debug('Creating Mask RCNN model')
-            shelve_db['mask_rcnn'] = models_wrapper.MaskRCNN(device)
 
         resnext = shelve_db['resnext']
         yolo = shelve_db['yolo']
-        mask_rcnn = shelve_db['mask_rcnn']  # TODO either use or remove
 
         if 'imagenet_data' not in shelve_db:
             logger.debug('Loading ImageNet')
             shelve_db['imagenet_data'] = ImageNetWithIndices(imagenet_path,
                                                              transform=resnext.preprocess)
         imagenet_data = shelve_db['imagenet_data']
-    return imagenet_data, resnext, yolo, mask_rcnn
+    return imagenet_data, resnext, yolo
 
 
 def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, classes, num_of_images_threads, resnext):
     # keeps only images that resnext is initially correct about them, and return the indices and resnext's confidence
 
     if classes:
-        target_indices = [i for i, target in enumerate(imagenet_data.targets) if imagenet_data.get_n_label(target) in classes]
+        target_indices = [i for i, target in enumerate(imagenet_data.targets) if
+                          imagenet_data.get_n_label(target) in classes]
         imagenet_subset = Subset(imagenet_data, target_indices)
     else:
         logger.debug('Using all classes')
@@ -117,7 +120,7 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, cla
 
     shutil.rmtree('runs', ignore_errors=True)
 
-    imagenet_data, resnext, yolo, mask_rcnn = load_persisted(device, imagenet_path)
+    imagenet_data, resnext, yolo = load_persisted(device, imagenet_path)
 
     images_indices, probs = extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, classes,
                                                     num_of_images_threads, resnext)
@@ -167,3 +170,53 @@ def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
                                                   num_of_images_threads=num_of_images_threads)
 
     return all_y, all_y_hat, all_prob
+
+
+def get_patch(func, width_x, width_y, dominant_color, device):
+    yy, xx = torch.meshgrid(torch.arange(width_y), torch.arange(width_x), indexing='ij')
+    xx = xx.to(device)
+    yy = yy.to(device)
+    result = func(x=xx, y=yy)
+    if not isinstance(result, torch.Tensor) or not result.shape:
+        assert type(result) in [float, torch.Tensor]
+        result = torch.full_like(xx, result, dtype=torch.float)
+    result = sigmoid(result)
+    result = (result > 0.5).to(torch.uint8)
+    result = result.unsqueeze(dim=0)
+    result = torch.concatenate(
+        (result * dominant_color[0], result * dominant_color[1], result * dominant_color[2]), axis=0)
+    result[result == 0] = 255
+    return result
+
+
+def get_dominant_color(im):
+    transform = torchvision.transforms.ToPILImage()
+    pil_image = transform(im)
+    pil_image = pil_image.convert("RGBA")
+    pil_image = pil_image.resize((1, 1), resample=0)
+    return pil_image.getpixel((0, 0))
+
+
+def apply_patches(func, img, xyxy, label_dir, ratio_x, ratio_y, gen_id, device):
+    im = torchvision.io.read_image(img).to(device)
+    for x1, y1, x2, y2, confidence, label in xyxy:
+        width_x = int(x2 - x1)
+        width_y = int(y2 - y1)
+        patch_width_x = int(width_x * ratio_x)
+        patch_width_y = int(width_y * ratio_y)
+        start_x = int(x1 + (width_x - patch_width_x) / 2)
+        start_y = int(y1 + (width_y - patch_width_y) / 2)
+        dominant_color = get_dominant_color(im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x])
+        patch = get_patch(func, patch_width_x, patch_width_y, dominant_color, device)
+
+        if im.shape[0] == 3:
+            im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x] = patch
+        elif im.shape[0] == 1:
+            # logger.debug(f'Image {img} is grayscale')     # multiple printings...”
+            im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x] = patch[0]
+        else:
+            raise ValueError
+
+    img_name = (label_dir / f'{Path(img).stem}__{gen_id}.png').as_posix()
+    torchvision.io.write_png(im.to('cpu'), img_name)
+    return img_name

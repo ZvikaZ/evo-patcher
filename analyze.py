@@ -5,6 +5,9 @@
 import argparse
 import os
 import re
+import statistics
+from pathlib import Path
+
 from matplotlib import pyplot as plt
 
 STAT_FILE = 'run.log'
@@ -13,7 +16,31 @@ WRITE_VALUES_ABOVE_POINTS = True
 
 
 def get_dirs(path):
-    return [os.path.join(path, d) for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))]
+    def sort_func(item):
+        return int(Path(item).stem.split('_')[1])
+    return sorted([os.path.join(path, d) for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))], key=sort_func)
+
+
+def get_model_fail_rate(lines):
+    # DEBUG:evolution_eval:gen_194_ind_116416 : fitness is 0.5320, model_fail_rate=0.3750, avg_prob_diff=0.5993
+    r = re.compile(
+        r'DEBUG:evolution_eval:gen_(\d+)_ind_(\d+) : fitness is (-?\d+\.\d+), model_fail_rate=(-?\d+\.\d+), avg_prob_diff=(-?\d+\.\d+)')
+    cur_gen = None
+    cur_fail_rates = None
+    fail_rates = []
+    for l in lines:
+        m = r.match(l)
+        if m:
+            # print(f'gen: {m.group(1)}, ind: {m.group(2)}, fitness: {m.group(3)}, fail_rate: {m.group(4)}, avg_prob_diff: {m.group(5)}')
+            gen = int(m.group(1))
+            fail_rate = float(m.group(4))
+            if gen != cur_gen:
+                if cur_fail_rates:
+                    fail_rates.append(statistics.mean(cur_fail_rates))
+                cur_gen = gen
+                cur_fail_rates = []
+            cur_fail_rates.append(fail_rate)
+    return fail_rates
 
 
 def get_run_result(d):
@@ -27,13 +54,21 @@ def get_run_result(d):
     worst = [float(r.match(l).group(2)) for l in lines if r.match(l)]
     average = [float(r.match(l).group(3)) for l in lines if r.match(l)]
     average_sizes = [float(r.match(l).group(4)) for l in lines if r.match(l)]
-    assert len(bests) == len(worst) == len(average) == len(average_sizes)
+
+    model_fail_rate = get_model_fail_rate(lines)
+    try:
+        print(f'{max(model_fail_rate):.4f}', d)
+    except ValueError:
+        pass
+
+    assert len(bests) == len(worst) == len(average) == len(average_sizes) #== len(model_fail_rate)
     return {
         'run': d,
         'bests': bests,
         'worst': worst,
         'average': average,
         'average_sizes': average_sizes,
+        'model_fail_rate': model_fail_rate,
     }
 
 
@@ -49,6 +84,7 @@ def plot_single_run(ax, r, ranges=None):
     out = ax.plot(r['bests'], '.-', label='Best')
     ax.plot(r['worst'], '.-', label='Worst')
     ax.plot(r['average'], '.-', alpha=0.6, label='Average')
+    ax.plot(r['model_fail_rate'], '.-', label='Model Fail Rate')
     # # plot nothing, just add to our legend
     ax.plot([], [], '.-', label='Average Sizes', color='tab:pink')
     if ranges:
@@ -77,7 +113,7 @@ def plot_single_run(ax, r, ranges=None):
             # if label != prev:
             #     prev = label
             # else:
-            #     # avoid consective similar values
+            #     # avoid consecutive similar values
             #     label = ""
 
             ax.annotate(label,  # this is the text
@@ -99,11 +135,13 @@ def plot_single_run(ax, r, ranges=None):
     return out
 
 
-def analyze(d, single_run):
+def analyze(d, single_run, write):
     if single_run:
         analyze_single_run(d)
+        if d.write:
+            raise NotImplementedError
     else:
-        analyze_regression(d)
+        analyze_regression(d, write)
 
 
 def get_ranges(all_results_to_plot):
@@ -119,10 +157,13 @@ def get_ranges(all_results_to_plot):
     }
 
 
-def analyze_regression(regression_dir):
+def analyze_regression(regression_dir, write):
     results = []
     for d in get_dirs(regression_dir):
-        results.append(get_run_result(d))
+        try:
+            results.append(get_run_result(d))
+        except FileNotFoundError:
+            pass
     all_results_to_plot = [r for r in results if r is not None]
     ranges = get_ranges(all_results_to_plot)
     counter = 0
@@ -139,7 +180,8 @@ def analyze_regression(regression_dir):
         axes.legend(loc='lower left')
         fig.tight_layout()
         plt.show()
-        # fig.savefig(f'results_{counter}.png')
+        if write:
+            fig.savefig(f'results_{counter}.png')
         counter += 1
 
 
@@ -147,8 +189,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                      description="Analyze regression results", )
     parser.add_argument("--dir", default='regression', help="directory containing run results, or regression")
+    parser.add_argument("--write", "-w", action='store_true', help="write .png file(s) with the images")
     parser.add_argument("--single-run", "-s", action='store_true',
                         help="'dir' points to single run instead of regression")
 
     args = parser.parse_args()
-    analyze(args.dir, args.single_run)
+    analyze(args.dir, args.single_run, args.write)

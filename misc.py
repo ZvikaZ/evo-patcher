@@ -3,6 +3,7 @@ import os
 import shutil
 import re
 import logging
+import time
 from pathlib import Path
 
 import torch
@@ -50,7 +51,13 @@ def initial_dump_images(imgs):
 
 def get_scratch_dir():
     p = Path('/scratch') / os.environ['USER'] / os.environ['SLURM_JOB_ID']
-    if p.is_dir():
+    try:
+        exists = p.is_dir()
+    except OSError:
+        logger.warning(f'OSError while accessing {p}, waiting 10 secs and trying again')
+        time.sleep(10)
+        exists = p.is_dir()
+    if exists:
         p = p / f'pid_{os.getpid()}'
         p.mkdir(exist_ok=True)
         return p
