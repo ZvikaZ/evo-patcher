@@ -6,3 +6,8 @@ pip install eckity # TODO take my eckity changes
 
 # YOLO:
 pip install -qr https://raw.githubusercontent.com/ultralytics/yolov5/master/requirements.txt # install dependencies
+
+
+# for developing:
+pip install pre-commit
+pip install optuna
