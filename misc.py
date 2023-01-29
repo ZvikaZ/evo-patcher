@@ -3,15 +3,15 @@ import os
 import shutil
 import re
 import logging
-import time
 from pathlib import Path
+from typing import List, Dict, Union
 
 import torch
 
 logger = logging.getLogger(__name__)
 
 
-def get_device():
+def get_device() -> str:
     if torch.cuda.is_available():
         logger.info('Using CUDA')
         return 'cuda'
@@ -20,7 +20,7 @@ def get_device():
         return 'cpu'
 
 
-def set_logger(logger_name, debug=True, logfile='run.log'):
+def set_logger(logger_name: str, debug: bool = True, logfile: str = 'run.log') -> logging.Logger:
     try:
         os.remove(logfile)
     except:
@@ -41,35 +41,16 @@ def set_logger(logger_name, debug=True, logfile='run.log'):
     return logging.getLogger(logger_name)
 
 
-def initial_dump_images(imgs):
+def initial_dump_images(imgs: List[Dict[str, Union[str, torch.Tensor]]]) -> None:
     p = Path('runs') / Path('initial')
     p.mkdir(parents=True, exist_ok=True)
     for img_d in imgs:
         img = img_d['img']
+        assert type(img) == type(img_d['label']) == str
         shutil.copy(img, p / (Path(img).stem + "__" + img_d['label'] + Path(img).suffix))
 
 
-def get_scratch_dir():  #TODO del it
-    p = Path('/scratch') / os.environ['USER'] / os.environ['SLURM_JOB_ID']
-    try:
-        exists = p.is_dir()
-    except OSError:
-        logger.warning(f'OSError while accessing {p}, waiting 10 secs and trying again')
-        time.sleep(10)
-        exists = p.is_dir()
-    if exists:
-        p = p / f'pid_{os.getpid()}'
-        p.mkdir(exist_ok=True)
-        return p
-    else:
-        logger.info(
-            'Using ./scratch dir ; you might want to override "get_scratch_dir()" to use some fast local directory')
-        p = Path('scratch')
-        p.mkdir(exist_ok=True)
-        return p
-
-
-def create_run_dir(all_runs_dir, run_name):
+def create_run_dir(all_runs_dir: str, run_name: str) -> None:
     # helper function for run.sh
 
     p = Path(all_runs_dir)
@@ -77,7 +58,9 @@ def create_run_dir(all_runs_dir, run_name):
 
     current_max = 0
     for run_dir in p.glob('run_*'):
-        run_num = int(re.match('run_(\d+).*', run_dir.stem).group(1))
+        m = re.match('run_(\d+).*', run_dir.stem)
+        assert m
+        run_num = int(m.group(1))
         if run_num > current_max:
             current_max = run_num
     if run_name:

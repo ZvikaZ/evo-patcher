@@ -34,4 +34,4 @@ if __name__ == '__main__':
     # TODO argparse
     standalone("runs/population/gen_0/gen_0_ind_1.py",
                "runs/initial/n04285008_13702__sports car.JPEG",
-               0.4, 0.4, 'BLACK')
+               0.4, 0.4, 'DOMINANT')

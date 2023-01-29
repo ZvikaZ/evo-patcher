@@ -2,16 +2,16 @@ import shutil
 from pathlib import Path
 import logging
 import shelve
-from typing import Callable
+from typing import Union, List, Dict, Any
+from typing_extensions import Protocol
 
 import torch
 import torchvision
 from torch.utils.data import Subset
 from torch import Tensor, sigmoid
-from PIL import Image
 
 import models_wrapper
-from datasets import ImageNetWithIndices, ImageNetSomeFiles, TensorsDataset
+from datasets import ImageNetWithIndices, TensorsDataset
 from misc import get_device, initial_dump_images
 
 # required for yolo unpickling
@@ -27,7 +27,9 @@ logger = logging.getLogger(__name__)
 SHELVE_FILE = "persist"
 
 
-def load_persisted(device, imagenet_path):
+def load_persisted(device: str,
+                   imagenet_path: str
+                   ) -> tuple[ImageNetWithIndices, models_wrapper.ResnextModel, models_wrapper.YoloModel]:
     if device == 'cpu':
         global SHELVE_FILE
         SHELVE_FILE += '_cpu'
@@ -50,13 +52,15 @@ def load_persisted(device, imagenet_path):
     return imagenet_data, resnext, yolo
 
 
-def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, classes, num_of_images_threads, resnext):
+def extract_resnext_correct(batch_size: int, device: str, imagenet_data: ImageNetWithIndices, num_of_images: int,
+                            classes: List[str], num_of_images_threads: int,
+                            resnext: models_wrapper.ResnextModel) -> tuple[list[Tensor], Tensor]:
     # keeps only images that resnext is initially correct about them, and return the indices and resnext's confidence
 
     if classes:
         target_indices = [i for i, target in enumerate(imagenet_data.targets) if
                           imagenet_data.get_n_label(target) in classes]
-        imagenet_subset = Subset(imagenet_data, target_indices)
+        imagenet_subset: Subset = Subset(imagenet_data, target_indices)
     else:
         logger.debug('Using all classes')
         imagenet_subset = imagenet_data
@@ -85,7 +89,9 @@ def extract_resnext_correct(batch_size, device, imagenet_data, num_of_images, cl
     return images_indices, probs
 
 
-def extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence, threshold_size_ratio, yolo):
+def extract_yolo(imgs_with_labels: List[tuple[str, str]], num_of_images: int, probs: Tensor,
+                 threshold_confidence: float, threshold_size_ratio: float,
+                 yolo: models_wrapper.YoloModel) -> tuple[List[Tensor], List[Dict[str, Union[str, Tensor]]]]:
     # keep only images that yolo is confident about them, and get its results
     yolo_results = yolo.infer([img for img, label in imgs_with_labels])
     image_results = []
@@ -114,8 +120,8 @@ def extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence, t
     return image_probs, image_results
 
 
-def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, classes, random_seed,
-            threshold_size_ratio, threshold_confidence):
+def prepare(num_of_images_threads: int, imagenet_path: str, batch_size: int, num_of_images: int, classes: List[str],
+            random_seed: int, threshold_size_ratio: float, threshold_confidence: float) -> Dict[str, Any]:
     torch.manual_seed(random_seed)
     device = get_device()
 
@@ -132,9 +138,6 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, cla
                                               threshold_size_ratio, yolo)
 
     tensors_w_labels = [(torchvision.io.read_image(im['img']), im['label']) for im in image_results]
-    tensors_dataset = TensorsDataset(tensors_w_labels=tensors_w_labels,
-                                     transform=resnext.preprocess,
-                                     imagenet_data=imagenet_data)
 
     initial_dump_images(image_results)
 
@@ -150,7 +153,11 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, cla
     }
 
 
-def infer_images(tensors_w_labels, model, batch_size, num_of_images_threads, imagenet_data):
+def infer_images(tensors_w_labels: List[tuple[Tensor, str]],
+                 model: models_wrapper.Model,
+                 batch_size: int,
+                 num_of_images_threads: int,
+                 imagenet_data: ImageNetWithIndices) -> tuple[Tensor, Tensor, Tensor]:
     dataset = TensorsDataset(tensors_w_labels=tensors_w_labels,
                              transform=model.preprocess,
                              imagenet_data=imagenet_data)
@@ -170,27 +177,31 @@ def infer_images(tensors_w_labels, model, batch_size, num_of_images_threads, ima
             all_prob = torch.cat((all_prob, prob))
             all_y = torch.cat((all_y, y))
             all_y_hat = torch.cat((all_y_hat, y_hat))
-    except torch.cuda.OutOfMemoryError:
+    except torch.cuda.OutOfMemoryError:  # type: ignore[misc]   # fix mypy false positive
         logger.warning(f"torch.cuda.OutOfMemoryError - reducing batch size to {batch_size // 2}")
-        all_y, all_y_hat, all_prob = infer_images(dataset, model, batch_size=batch_size // 2,
+        all_y, all_y_hat, all_prob = infer_images(tensors_w_labels, model, batch_size=batch_size // 2,
+                                                  imagenet_data=imagenet_data,
                                                   num_of_images_threads=num_of_images_threads)
 
     return all_y, all_y_hat, all_prob
 
 
-def get_patch(func, width_x, width_y, color, device):
+class EvolvedFunc(Protocol):
+    def __call__(self, x: Tensor, y: Tensor) -> Union[Tensor, float]: ...
+
+
+def get_patch(func: EvolvedFunc, width_x: float, width_y: float, color: tuple[int, int, int], device: str) -> Tensor:
     yy, xx = torch.meshgrid(torch.arange(width_y), torch.arange(width_x), indexing='ij')
     xx = xx.to(device)
     yy = yy.to(device)
     result = func(x=xx, y=yy)
     if not isinstance(result, torch.Tensor) or not result.shape:
-        assert type(result) in [float, torch.Tensor]
-        result = torch.full_like(xx, result, dtype=torch.float)
+        assert type(result) in [Tensor, float]
+        result = torch.full_like(xx, float(result), dtype=torch.float)
     result = sigmoid(result)
     result = (result > 0.5).to(torch.uint8)
     result = result.unsqueeze(dim=0)
-    result = torch.concatenate(
-        (result * color[0], result * color[1], result * color[2]), axis=0)
+    result = torch.cat((result * color[0], result * color[1], result * color[2]), dim=0)
     result[result == 0] = 255
     return result
 
@@ -203,7 +214,7 @@ def get_dominant_color(im: Tensor) -> tuple[int, int, int]:
     return pil_image.getpixel((0, 0))
 
 
-def apply_patches(func: Callable[[Tensor, Tensor], Tensor], im: Tensor, xyxy: Tensor, ratio_x: float, ratio_y: float,
+def apply_patches(func: EvolvedFunc, im: Tensor, xyxy: Tensor, ratio_x: float, ratio_y: float,
                   colors: str, device: str) -> None:
     for x1, y1, x2, y2, confidence, label in xyxy:
         width_x = int(x2 - x1)

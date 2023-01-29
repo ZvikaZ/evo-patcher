@@ -20,6 +20,7 @@ class ImageNetWithIndices(ImageNet):
 
 
 class ImageNetSomeFiles(ImageFolder):
+    # TODO del
     def __init__(self, root, transform, imagenet_data):
         self.imagenet_data = imagenet_data
         super().__init__(root=root, transform=transform, target_transform=self.target_transform)
