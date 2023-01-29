@@ -178,7 +178,7 @@ def infer_images(tensors_w_labels, model, batch_size, num_of_images_threads, ima
     return all_y, all_y_hat, all_prob
 
 
-def get_patch(func, width_x, width_y, dominant_color, device):
+def get_patch(func, width_x, width_y, color, device):
     yy, xx = torch.meshgrid(torch.arange(width_y), torch.arange(width_x), indexing='ij')
     xx = xx.to(device)
     yy = yy.to(device)
@@ -190,12 +190,12 @@ def get_patch(func, width_x, width_y, dominant_color, device):
     result = (result > 0.5).to(torch.uint8)
     result = result.unsqueeze(dim=0)
     result = torch.concatenate(
-        (result * dominant_color[0], result * dominant_color[1], result * dominant_color[2]), axis=0)
+        (result * color[0], result * color[1], result * color[2]), axis=0)
     result[result == 0] = 255
     return result
 
 
-def get_dominant_color(im):
+def get_dominant_color(im: Tensor) -> tuple[int, int, int]:
     transform = torchvision.transforms.ToPILImage()
     pil_image = transform(im)
     pil_image = pil_image.convert("RGBA")
@@ -204,7 +204,7 @@ def get_dominant_color(im):
 
 
 def apply_patches(func: Callable[[Tensor, Tensor], Tensor], im: Tensor, xyxy: Tensor, ratio_x: float, ratio_y: float,
-                  device: str) -> None:
+                  colors: str, device: str) -> None:
     for x1, y1, x2, y2, confidence, label in xyxy:
         width_x = int(x2 - x1)
         width_y = int(y2 - y1)
@@ -212,8 +212,19 @@ def apply_patches(func: Callable[[Tensor, Tensor], Tensor], im: Tensor, xyxy: Te
         patch_width_y = int(width_y * ratio_y)
         start_x = int(x1 + (width_x - patch_width_x) / 2)
         start_y = int(y1 + (width_y - patch_width_y) / 2)
-        dominant_color = get_dominant_color(im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x])
-        patch = get_patch(func, patch_width_x, patch_width_y, dominant_color, device)
+        if colors == 'BLACK':
+            # the diff between (0,0,0) and (1,1,1) should be negligble, and it's easier due to get_patch code that turns
+            # the background (0) to white (255)
+            color = (1, 1, 1)
+        else:
+            color = get_dominant_color(im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x])
+            if colors == 'DOMINANT':
+                pass
+            elif colors == 'INVERSE':
+                color = (255 - color[0], 255 - color[1], 255 - color[2])
+            else:
+                raise ValueError(colors)
+        patch = get_patch(func, patch_width_x, patch_width_y, color, device)
 
         if im.shape[0] == 3:
             im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x] = patch

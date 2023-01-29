@@ -22,9 +22,9 @@ def clean_clone(ind):
     return result
 
 
-def directories_mingling(i):
+def directories_mingling(i : int, name: str = 'single_attacks'):
     orig_dir = os.getcwd()
-    p = Path('single_attacks') / f'single_attack_{i}'
+    p = Path(name) / f'attack_{i}'
     p.mkdir(parents=True)
     for f in glob.glob('persist*'):
         shutil.copy(f, p)
@@ -71,7 +71,7 @@ def single_images_attack(creation_max_depth, population_size, num_of_evolve_thre
 def attack(single_image, creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads,
            max_generation, random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
            imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence,
-           fail_weight, prob_weight, abs_prob):
+           fail_weight, prob_weight, abs_prob, colors):
     if single_image:
         # perform a Single-Image attack (on possibly many images)
         single_images_attack(creation_max_depth=creation_max_depth,
@@ -90,7 +90,7 @@ def attack(single_image, creation_max_depth, population_size, num_of_evolve_thre
                              classes=classes,
                              threshold_size_ratio=threshold_size_ratio,
                              threshold_confidence=threshold_confidence)
-        # TODO use here fail_weight, prob_weight, abs_prob
+        # TODO use here fail_weight, prob_weight, abs_prob, colors
     else:
         # perform a Universal Attack
         evolve(individuals=None,
@@ -112,4 +112,5 @@ def attack(single_image, creation_max_depth, population_size, num_of_evolve_thre
                threshold_confidence=threshold_confidence,
                fail_weight=fail_weight,
                prob_weight=prob_weight,
-               abs_prob=abs_prob)
+               abs_prob=abs_prob,
+               colors=colors)

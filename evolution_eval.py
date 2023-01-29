@@ -12,6 +12,11 @@ from image_utils import prepare, infer_images, apply_patches
 logger = logging.getLogger(__name__)
 
 
+def report(model_fail_rate):
+    # overriden by Optuna
+    pass
+
+
 class Evaluator(SimpleIndividualEvaluator):
     """
     Compute the fitness of an individual.
@@ -19,7 +24,7 @@ class Evaluator(SimpleIndividualEvaluator):
 
     def __init__(self, num_of_images_threads, imagenet_path, batch_size, num_of_images, classes, random_seed,
                  patch_ratio_x, patch_ratio_y, threshold_size_ratio, threshold_confidence,
-                 fail_weight, prob_weight, abs_prob):
+                 fail_weight, prob_weight, abs_prob, colors):
         super().__init__()
         self.batch_size = batch_size
         self.num_of_images_threads = num_of_images_threads
@@ -39,6 +44,7 @@ class Evaluator(SimpleIndividualEvaluator):
         self.fail_weight = fail_weight
         self.prob_weight = prob_weight
         self.abs_prob = abs_prob
+        self.colors = colors
         logger.debug(f'fail_weight: {self.fail_weight}, prob_weight: {self.prob_weight}, abs_prob: {self.abs_prob}')
 
     def _evaluate_individual(self, individual):
@@ -60,12 +66,13 @@ class Evaluator(SimpleIndividualEvaluator):
 
         for i, img_result in enumerate(self.image_results):
             apply_patches(individual.execute, patched_images[i][0], img_result['bb'],
-                                       self.ratio_x, self.ratio_y, self.device)
+                          self.ratio_x, self.ratio_y, self.colors, self.device)
 
         y, y_hat, probs = infer_images(patched_images, self.resnext,
                                        self.batch_size, self.num_of_images_threads, self.imagenet_data)
 
         model_fail_rate = (y != y_hat).count_nonzero() / len(y)
+        report(model_fail_rate)
         if 'first' in self.abs_prob:  # used to be 'abs_prob=True'
             avg_prob_diff = 1 - probs.mean()
         elif 'second' in self.abs_prob:

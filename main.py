@@ -16,7 +16,7 @@ if __name__ == "__main__":
     evolution_group = arg_parser.add_argument_group("Evolution options")
     evolution_group.add_argument("--patch-ratio-x", type=float, default=0.4)
     evolution_group.add_argument("--patch-ratio-y", type=float, default=0.4)
-    evolution_group.add_argument("--elitism-rate", type=float, default=0)
+    evolution_group.add_argument("--elitism-rate", type=float, default=0)  # TODO?
     evolution_group.add_argument("--num-of-evolve-threads", type=int, default=1)  # TODO 2?
     evolution_group.add_argument("--population-size", '-p', type=int, default=500)
     evolution_group.add_argument("--max-generation", '-g', type=int, default=250)
@@ -25,6 +25,7 @@ if __name__ == "__main__":
     evolution_group.add_argument("--fail-weight", type=float, default=0.7)
     evolution_group.add_argument("--prob-weight", type=float, default=0.3)
     evolution_group.add_argument("--abs-prob", )
+    evolution_group.add_argument("--colors", choices=['BLACK', 'DOMINANT', 'INVERSE'], default='INVERSE')
 
     images_group = arg_parser.add_argument_group("Images reading options")
     images_group.add_argument("--num-of-images-threads", type=int, default=4)  # TODO increase?
@@ -68,10 +69,11 @@ if __name__ == "__main__":
                threshold_confidence=args.threshold_confidence,
                fail_weight=args.fail_weight,
                prob_weight=args.prob_weight,
-               abs_prob=args.abs_prob)
+               abs_prob=args.abs_prob,
+               colors=args.colors)
     else:
         # standalone mode
         if args.standalone_ind and args.standalone_image:
-            standalone(args.standalone_ind, args.standalone_image, args.patch_ratio_x, args.patch_ratio_y)
+            standalone(args.standalone_ind, args.standalone_image, args.patch_ratio_x, args.patch_ratio_y, args.colors)
         else:
             raise SystemExit('Standalone mode, but missing --standalone-ind or --standalone-image')

@@ -15,3 +15,5 @@ persist_cpu.dat
 persist_cpu.dir
 slurm-*.out
 temp.txt
+patcher-params.db
+

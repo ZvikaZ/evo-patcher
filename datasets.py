@@ -68,10 +68,10 @@ if __name__ == '__main__':
                                          transform=resnext.preprocess,
                                          imagenet_data=imagenet_data)
     x1 = imagenet_dataset[0]
-    data_loader = torch.utils.data.DataLoader(imagenet_dataset,
-                                              batch_size=batch_size,
-                                              shuffle=False,
-                                              num_workers=0)
+    data_loader: torch.utils.data.DataLoader = torch.utils.data.DataLoader(imagenet_dataset,
+                                                                           batch_size=batch_size,
+                                                                           shuffle=False,
+                                                                           num_workers=0)
     for X, y in data_loader:
         # print(X)
         im_x = X.to(device)
