@@ -3,7 +3,7 @@ import logging
 import os
 import sys
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import optuna
 from optuna.trial import Trial
 
@@ -103,22 +103,22 @@ def run_experiment():
 
 def show_results():
     raise NotImplementedError
-    # visualisations from https://optuna.readthedocs.io/en/stable/tutorial/20_recipes/002_multi_objective.html
-    study = optuna.create_study(study_name=study_name, storage=storage_name, load_if_exists=True,
-                                directions=["minimize", "maximize"])
-
-    print('Best trials:')
-    for trial in study.best_trials:
-        print(trial)
-
-    optuna.visualization.matplotlib.plot_pareto_front(study, target_names=["queries", "asr"])
-    optuna.visualization.matplotlib.plot_param_importances(
-        study, target=lambda t: t.values[0], target_name="queries"
-    )
-    optuna.visualization.matplotlib.plot_param_importances(
-        study, target=lambda t: t.values[0], target_name="asr"
-    )
-    plt.show()
+    # # visualisations from https://optuna.readthedocs.io/en/stable/tutorial/20_recipes/002_multi_objective.html
+    # study = optuna.create_study(study_name=study_name, storage=storage_name, load_if_exists=True,
+    #                             directions=["minimize", "maximize"])
+    #
+    # print('Best trials:')
+    # for trial in study.best_trials:
+    #     print(trial)
+    #
+    # optuna.visualization.matplotlib.plot_pareto_front(study, target_names=["queries", "asr"])
+    # optuna.visualization.matplotlib.plot_param_importances(
+    #     study, target=lambda t: t.values[0], target_name="queries"
+    # )
+    # optuna.visualization.matplotlib.plot_param_importances(
+    #     study, target=lambda t: t.values[0], target_name="asr"
+    # )
+    # plt.show()
 
 
 if __name__ == '__main__':

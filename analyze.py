@@ -18,7 +18,9 @@ WRITE_VALUES_ABOVE_POINTS = True
 def get_dirs(path):
     def sort_func(item):
         return int(Path(item).stem.split('_')[1])
-    return sorted([os.path.join(path, d) for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))], key=sort_func)
+
+    return sorted([os.path.join(path, d) for d in os.listdir(path) if os.path.isdir(os.path.join(path, d))],
+                  key=sort_func)
 
 
 def get_model_fail_rate(lines):
@@ -61,7 +63,7 @@ def get_run_result(d):
     except ValueError:
         pass
 
-    assert len(bests) == len(worst) == len(average) == len(average_sizes) #== len(model_fail_rate)
+    assert len(bests) == len(worst) == len(average) == len(average_sizes)  # == len(model_fail_rate)
     return {
         'run': d,
         'bests': bests,
@@ -107,7 +109,7 @@ def plot_single_run(ax, r, ranges=None):
             i += 1
             # print numerical value for last point, and for every 10th one
             if (len(r['bests']) - i) % 10 == 0:
-                label = "{:.3f}".format(y)
+                label = f"{y:.3f}"
             else:
                 label = ""
             # if label != prev:
@@ -145,10 +147,10 @@ def analyze(d, single_run, write):
 
 
 def get_ranges(all_results_to_plot):
-    max_best = max([max(result['bests']) for result in all_results_to_plot if result['bests']])
-    min_worst = min([min(result['worst']) for result in all_results_to_plot if result['worst']])
-    max_size = max([max(result['average_sizes']) for result in all_results_to_plot if result['average_sizes']])
-    generations = max([len(result['bests']) for result in all_results_to_plot])
+    max_best = max(max(result['bests']) for result in all_results_to_plot if result['bests'])
+    min_worst = min(min(result['worst']) for result in all_results_to_plot if result['worst'])
+    max_size = max(max(result['average_sizes']) for result in all_results_to_plot if result['average_sizes'])
+    generations = max(len(result['bests']) for result in all_results_to_plot)
     return {
         'max_best': max_best,
         'min_worst': min_worst,
@@ -173,11 +175,12 @@ def analyze_regression(regression_dir, write):
 
         fig, ax = plt.subplots(len(results_to_plot), 1, figsize=(10, 10))
         try:
-            for (index, axes) in enumerate(ax):
+            for index, axes in enumerate(ax):
                 plot_single_run(axes, results_to_plot[index], ranges)
+                if index == len(ax) - 1:
+                    axes.legend(loc='lower left')
         except TypeError:
             plot_single_run(ax, results_to_plot[0], ranges)
-        axes.legend(loc='lower left')   #TODO
         fig.tight_layout()
         plt.show()
         if write:

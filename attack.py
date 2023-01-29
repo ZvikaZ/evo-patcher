@@ -22,7 +22,7 @@ def clean_clone(ind):
     return result
 
 
-def directories_mingling(i : int, name: str = 'single_attacks'):
+def directories_mingling(i: int, name: str = 'single_attacks'):
     orig_dir = os.getcwd()
     p = Path(name) / f'attack_{i}'
     p.mkdir(parents=True)
@@ -34,7 +34,9 @@ def directories_mingling(i : int, name: str = 'single_attacks'):
 
 def single_images_attack(creation_max_depth, population_size, num_of_evolve_threads, num_of_images_threads,
                          max_generation, random_seed, patch_ratio_x, patch_ratio_y, elitism_rate, bloat_weight,
-                         imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence):
+                         imagenet_path, batch_size, num_of_images, classes, threshold_size_ratio, threshold_confidence,
+                         fail_weight, prob_weight, abs_prob, colors):
+    classes = []  # ignore user's request, use all classes
     individuals = None
     shutil.rmtree('single_attacks', ignore_errors=True)
     for i in range(num_of_images):
@@ -55,16 +57,21 @@ def single_images_attack(creation_max_depth, population_size, num_of_evolve_thre
                       imagenet_path=imagenet_path,
                       batch_size=batch_size,
                       num_of_images=1,
-                      classes=[],  # ignore user's request, use all classes
+                      classes=classes,
                       threshold_size_ratio=threshold_size_ratio,
-                      threshold_confidence=threshold_confidence)
+                      threshold_confidence=threshold_confidence,
+                      fail_weight=fail_weight,
+                      prob_weight=prob_weight,
+                      abs_prob=abs_prob,
+                      colors=colors, )
         if algo.best_of_run_.get_pure_fitness() > 0.8:
             # something more sophisticated?
             logger.debug('Saving individuals for next image')
             individuals = [clean_clone(ind) for ind in algo.population.sub_populations[0].individuals]
         else:
             logger.debug('Cleaning individuals for next image')
-            individuals = [clean_clone(ind) for ind in individuals]
+            if individuals is not None:
+                individuals = [clean_clone(ind) for ind in individuals]
         os.chdir(orig_dir)
 
 
@@ -89,8 +96,11 @@ def attack(single_image, creation_max_depth, population_size, num_of_evolve_thre
                              num_of_images=num_of_images,
                              classes=classes,
                              threshold_size_ratio=threshold_size_ratio,
-                             threshold_confidence=threshold_confidence)
-        # TODO use here fail_weight, prob_weight, abs_prob, colors
+                             threshold_confidence=threshold_confidence,
+                             fail_weight=fail_weight,
+                             prob_weight=prob_weight,
+                             abs_prob=abs_prob,
+                             colors=colors)
     else:
         # perform a Universal Attack
         evolve(individuals=None,

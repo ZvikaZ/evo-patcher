@@ -23,16 +23,6 @@ disable=
         unnecessary-dunder-call,
         fixme,
 
-        # temp bypass until investigated:  #TODO!
-        unused-argument,
-        consider-using-generator,
-        no-value-for-parameter,
-        not-an-iterable,
-        method-hidden,
-        arguments-renamed,
-        unreachable,
-        undefined-loop-variable,
-        consider-using-f-string,
 
 
 # these two sections disable false alarm for Pytorch (and probalby for numpy),

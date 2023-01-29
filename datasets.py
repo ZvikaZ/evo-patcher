@@ -23,9 +23,9 @@ class ImageNetSomeFiles(ImageFolder):
     # TODO del
     def __init__(self, root, transform, imagenet_data):
         self.imagenet_data = imagenet_data
-        super().__init__(root=root, transform=transform, target_transform=self.target_transform)
+        super().__init__(root=root, transform=transform, target_transform=self.my_target_transform)
 
-    def target_transform(self, class_idx):
+    def my_target_transform(self, class_idx):
         class_name = self.classes[class_idx]
         return self.imagenet_data.class_to_idx[class_name]
 

@@ -58,10 +58,10 @@ class YoloModel(Model):
         self.model = torch.hub.load('ultralytics/yolov5', 'yolov5x', pretrained=True, _verbose=False).to(device)
         self.batch_size = 100
 
-    def infer(self, imgs: list[str]) -> list[dict[str, Any]]:
+    def infer(self, batch: list[str]) -> list[dict[str, Any]]:
         self.free_cuda_memory()
         yolo_results = []
-        for chunk in np.array_split(imgs, len(imgs) // self.batch_size + 1):
+        for chunk in np.array_split(batch, len(batch) // self.batch_size + 1):
             chunk_results = self.model(chunk.tolist())
             chunk_results.save()  # TODO disable the saving printing, and maybe unify the directories
             yolo_results.extend(chunk_results.tolist())
