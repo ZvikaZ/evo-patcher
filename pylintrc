@@ -31,7 +31,6 @@ disable=
         method-hidden,
         arguments-renamed,
         unreachable,
-        consider-using-f-string,
         undefined-loop-variable,
 
 
