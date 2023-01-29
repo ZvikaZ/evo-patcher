@@ -177,7 +177,7 @@ def analyze_regression(regression_dir, write):
                 plot_single_run(axes, results_to_plot[index], ranges)
         except TypeError:
             plot_single_run(ax, results_to_plot[0], ranges)
-        axes.legend(loc='lower left')   #TODO?
+        axes.legend(loc='lower left')   #TODO
         fig.tight_layout()
         plt.show()
         if write:

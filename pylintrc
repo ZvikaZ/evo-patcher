@@ -32,6 +32,7 @@ disable=
         arguments-renamed,
         unreachable,
         undefined-loop-variable,
+        consider-using-f-string,
 
 
 # these two sections disable false alarm for Pytorch (and probalby for numpy),
