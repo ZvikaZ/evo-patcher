@@ -10,4 +10,6 @@ pip install -qr https://raw.githubusercontent.com/ultralytics/yolov5/master/requ
 
 # for developing:
 pip install pre-commit
+pip install pylint
+pip install mypy
 pip install optuna
