@@ -49,7 +49,7 @@ def initial_dump_images(imgs):
         shutil.copy(img, p / (Path(img).stem + "__" + img_d['label'] + Path(img).suffix))
 
 
-def get_scratch_dir():
+def get_scratch_dir():  #TODO del it
     p = Path('/scratch') / os.environ['USER'] / os.environ['SLURM_JOB_ID']
     try:
         exists = p.is_dir()

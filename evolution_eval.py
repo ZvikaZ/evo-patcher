@@ -5,12 +5,9 @@ import shutil
 import logging
 from pathlib import Path
 
-import torch
-import torchvision.io
 from eckity.evaluators.simple_individual_evaluator import SimpleIndividualEvaluator
 
 from image_utils import prepare, infer_images, apply_patches
-from misc import get_scratch_dir
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +33,7 @@ class Evaluator(SimpleIndividualEvaluator):
         self.imagenet_data = data['imagenet_data']
         self.image_results = data['image_results']
         self.image_probs = data['image_probs']
+        self.tensors_w_labels = data['tensors_w_labels']
 
         self.num_of_images_to_dump = 8
         self.fail_weight = fail_weight
@@ -58,17 +56,14 @@ class Evaluator(SimpleIndividualEvaluator):
         float
             fitness value
         """
-        scratch_dir = get_scratch_dir() / self.get_gen_id(individual)
-        img_names = []
+        patched_images = [(t.clone(), label) for t, label in self.tensors_w_labels]
 
         for i, img_result in enumerate(self.image_results):
-            label = img_result['label']
-            (scratch_dir / label).mkdir(exist_ok=True, parents=True)
-            img_names.append(apply_patches(individual.execute, img_result['img'], img_result['bb'], scratch_dir / label,
-                                           self.ratio_x, self.ratio_y, self.get_gen_id(individual), self.device))
+            apply_patches(individual.execute, patched_images[i][0], img_result['bb'],
+                                       self.ratio_x, self.ratio_y, self.device)
 
-        y, y_hat, probs = infer_images(scratch_dir, self.resnext, self.imagenet_data, self.batch_size,
-                                       self.num_of_images_threads)
+        y, y_hat, probs = infer_images(patched_images, self.resnext,
+                                       self.batch_size, self.num_of_images_threads, self.imagenet_data)
 
         model_fail_rate = (y != y_hat).count_nonzero() / len(y)
         if 'first' in self.abs_prob:  # used to be 'abs_prob=True'
@@ -101,7 +96,6 @@ class Evaluator(SimpleIndividualEvaluator):
 
         # for i, img_name in enumerate(img_names):
         #     self.dump_images(i, individual.gen, img_name, fitness)
-        shutil.rmtree(scratch_dir)
 
         self.dump_ind(individual, fitness, model_fail_rate, avg_prob_diff, y, y_hat, probs)
 

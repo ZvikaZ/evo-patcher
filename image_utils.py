@@ -2,15 +2,16 @@ import shutil
 from pathlib import Path
 import logging
 import shelve
+from typing import Callable
 
 import torch
 import torchvision
 from torch.utils.data import Subset
-from torch import sigmoid
+from torch import Tensor, sigmoid
 from PIL import Image
 
 import models_wrapper
-from datasets import ImageNetWithIndices, ImageNetSomeFiles
+from datasets import ImageNetWithIndices, ImageNetSomeFiles, TensorsDataset
 from misc import get_device, initial_dump_images
 
 # required for yolo unpickling
@@ -130,6 +131,11 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, cla
     image_probs, image_results = extract_yolo(imgs_with_labels, num_of_images, probs, threshold_confidence,
                                               threshold_size_ratio, yolo)
 
+    tensors_w_labels = [(torchvision.io.read_image(im['img']), im['label']) for im in image_results]
+    tensors_dataset = TensorsDataset(tensors_w_labels=tensors_w_labels,
+                                     transform=resnext.preprocess,
+                                     imagenet_data=imagenet_data)
+
     initial_dump_images(image_results)
 
     logger.debug(f"Running on {len(image_results)} images: {[im['img'] for im in image_results]}")
@@ -140,13 +146,14 @@ def prepare(num_of_images_threads, imagenet_path, batch_size, num_of_images, cla
         'imagenet_data': imagenet_data,
         'image_results': image_results,
         'image_probs': torch.Tensor(image_probs).to(device),
+        'tensors_w_labels': tensors_w_labels,
     }
 
 
-def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
-    dataset = ImageNetSomeFiles(root=root,
-                                transform=model.preprocess,
-                                imagenet_data=imagenet_data)
+def infer_images(tensors_w_labels, model, batch_size, num_of_images_threads, imagenet_data):
+    dataset = TensorsDataset(tensors_w_labels=tensors_w_labels,
+                             transform=model.preprocess,
+                             imagenet_data=imagenet_data)
     try:
         data_loader = torch.utils.data.DataLoader(dataset,
                                                   batch_size=batch_size,
@@ -165,8 +172,7 @@ def infer_images(root, model, imagenet_data, batch_size, num_of_images_threads):
             all_y_hat = torch.cat((all_y_hat, y_hat))
     except torch.cuda.OutOfMemoryError:
         logger.warning(f"torch.cuda.OutOfMemoryError - reducing batch size to {batch_size // 2}")
-        all_y, all_y_hat, all_prob = infer_images(root, model, imagenet_data,
-                                                  batch_size=batch_size // 2,
+        all_y, all_y_hat, all_prob = infer_images(dataset, model, batch_size=batch_size // 2,
                                                   num_of_images_threads=num_of_images_threads)
 
     return all_y, all_y_hat, all_prob
@@ -197,8 +203,8 @@ def get_dominant_color(im):
     return pil_image.getpixel((0, 0))
 
 
-def apply_patches(func, img, xyxy, label_dir, ratio_x, ratio_y, gen_id, device):
-    im = torchvision.io.read_image(img).to(device)
+def apply_patches(func: Callable[[Tensor, Tensor], Tensor], im: Tensor, xyxy: Tensor, ratio_x: float, ratio_y: float,
+                  device: str) -> None:
     for x1, y1, x2, y2, confidence, label in xyxy:
         width_x = int(x2 - x1)
         width_y = int(y2 - y1)
@@ -212,11 +218,7 @@ def apply_patches(func, img, xyxy, label_dir, ratio_x, ratio_y, gen_id, device):
         if im.shape[0] == 3:
             im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x] = patch
         elif im.shape[0] == 1:
-            # logger.debug(f'Image {img} is grayscale')     # multiple printings...”
+            # logger.debug(f'Image {img} is grayscale')     # multiple printings...
             im[:, start_y:start_y + patch_width_y, start_x:start_x + patch_width_x] = patch[0]
         else:
             raise ValueError
-
-    img_name = (label_dir / f'{Path(img).stem}__{gen_id}.png').as_posix()
-    torchvision.io.write_png(im.to('cpu'), img_name)
-    return img_name

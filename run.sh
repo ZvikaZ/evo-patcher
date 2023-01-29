@@ -28,5 +28,5 @@ cd "$run_dir" || exit
 cp ../../persist* .
 cp ../../yolov5x.pt .
 echo "Running in $run_dir"
-echo python -u ../../main.py "$@"
-python -u ../../main.py "$@"
+echo time python -u ../../main.py "$@"
+time python -u ../../main.py "$@"
