@@ -1,7 +1,10 @@
+import sys
+import os.path
 import shutil
 from pathlib import Path
 import logging
 import shelve
+import importlib
 from typing import Union, List, Dict, Any
 from typing_extensions import Protocol
 
@@ -9,18 +12,14 @@ import torch
 import torchvision
 from torch.utils.data import Subset
 from torch import Tensor, sigmoid
+from torch import hub
 
 import models_wrapper
 from datasets import ImageNetWithIndices, TensorsDataset
 from misc import get_device, initial_dump_images
 
-# required for yolo unpickling
-import sys
-import os.path
-from torch import hub
-
 sys.path.append(os.path.join(hub.get_dir(), 'ultralytics_yolov5_master'))
-import models  # it's in the aforementioned path
+importlib.import_module('models')  # it's in the aforementioned path
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,7 @@ def load_persisted(device: str,
             logger.debug('Creating Yolo model')
             shelve_db['yolo'] = models_wrapper.YoloModel(device)
 
-        resnext = shelve_db['resnext']
+        resnext: models_wrapper.ResnextModel = shelve_db['resnext']
         yolo = shelve_db['yolo']
 
         if 'imagenet_data' not in shelve_db:
@@ -216,7 +215,7 @@ def get_dominant_color(im: Tensor) -> tuple[int, int, int]:
 
 def apply_patches(func: EvolvedFunc, im: Tensor, xyxy: Tensor, ratio_x: float, ratio_y: float,
                   colors: str, device: str) -> None:
-    for x1, y1, x2, y2, confidence, label in xyxy:
+    for x1, y1, x2, y2, _confidence, _label in xyxy:
         width_x = int(x2 - x1)
         width_y = int(y2 - y1)
         patch_width_x = int(width_x * ratio_x)

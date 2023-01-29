@@ -1,5 +1,4 @@
 import argparse
-import os
 import shutil
 import re
 import logging
@@ -21,10 +20,7 @@ def get_device() -> str:
 
 
 def set_logger(logger_name: str, debug: bool = True, logfile: str = 'run.log') -> logging.Logger:
-    try:
-        os.remove(logfile)
-    except:
-        pass
+    Path(logfile).unlink(missing_ok=True)
     if debug:
         level = logging.DEBUG
     else:
@@ -42,30 +38,31 @@ def set_logger(logger_name: str, debug: bool = True, logfile: str = 'run.log') -
 
 
 def initial_dump_images(imgs: List[Dict[str, Union[str, torch.Tensor]]]) -> None:
-    p = Path('runs') / Path('initial')
-    p.mkdir(parents=True, exist_ok=True)
+    path = Path('runs') / Path('initial')
+    path.mkdir(parents=True, exist_ok=True)
     for img_d in imgs:
         img = img_d['img']
-        assert type(img) == type(img_d['label']) == str
-        shutil.copy(img, p / (Path(img).stem + "__" + img_d['label'] + Path(img).suffix))
+        assert isinstance(img, str)
+        assert isinstance(img_d['label'], str)
+        shutil.copy(img, path / (Path(img).stem + "__" + img_d['label'] + Path(img).suffix))
 
 
 def create_run_dir(all_runs_dir: str, run_name: str) -> None:
     # helper function for run.sh
 
-    p = Path(all_runs_dir)
-    p.mkdir(exist_ok=True)
+    path = Path(all_runs_dir)
+    path.mkdir(exist_ok=True)
 
     current_max = 0
-    for run_dir in p.glob('run_*'):
-        m = re.match('run_(\d+).*', run_dir.stem)
-        assert m
-        run_num = int(m.group(1))
+    for run_dir in path.glob('run_*'):
+        match = re.match(r'run_(\d+).*', run_dir.stem)
+        assert match
+        run_num = int(match.group(1))
         if run_num > current_max:
             current_max = run_num
     if run_name:
         run_name = '_' + run_name
-    run_p = p / (f'run_{current_max + 1}{run_name}')
+    run_p = path / (f'run_{current_max + 1}{run_name}')
     run_p.mkdir()
 
     print(run_p)

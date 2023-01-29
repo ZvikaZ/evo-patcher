@@ -18,7 +18,7 @@ from evolution_func import *
 logger = logging.getLogger(__name__)
 
 
-def del_some_images(sender, data_dict):
+def del_some_images(sender, _data_dict):
     try:
         ids_to_keep = [str(sender.best_of_gen.id), str(sender.worst_of_gen.id)]
     except AttributeError:

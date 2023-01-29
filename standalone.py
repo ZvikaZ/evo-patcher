@@ -7,7 +7,7 @@ import torchvision
 
 import models_wrapper
 from misc import get_device
-from image_utils import apply_patches, get_dominant_color
+from image_utils import apply_patches
 
 
 def standalone(indfile, imagefile, ratio_x, ratio_y, colors):

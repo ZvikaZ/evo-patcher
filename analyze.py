@@ -74,7 +74,7 @@ def get_run_result(d):
 
 def analyze_single_run(d):
     run_result = get_run_result(d)
-    fig, ax = plt.subplots(1, 1)
+    _fig, ax = plt.subplots(1, 1)
     plot_single_run(ax, run_result)
     ax.legend()
     plt.show()

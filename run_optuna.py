@@ -1,12 +1,11 @@
 import argparse
-
-import optuna
-from optuna.trial import Trial
 import logging
 import os
 import sys
+
 import matplotlib.pyplot as plt
-from matplotlib import colors
+import optuna
+from optuna.trial import Trial
 
 from attack import attack, directories_mingling
 import evolution_eval

@@ -12,7 +12,7 @@ from image_utils import prepare, infer_images, apply_patches
 logger = logging.getLogger(__name__)
 
 
-def report(model_fail_rate):
+def report(_model_fail_rate):
     # overriden by Optuna
     pass
 

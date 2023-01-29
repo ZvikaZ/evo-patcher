@@ -1,5 +1,5 @@
-import torch
 import logging
+import torch
 from misc import get_device
 
 logger = logging.getLogger(__name__)
@@ -61,4 +61,4 @@ def t_sigmoid(x):
 
 def t_iflte(x, y, z, w):
     """if x <= y return z else return w"""
-    return torch.where(tensorize(x) <= 0, y, z)
+    return torch.where(tensorize(x) <= tensorize(y), z, w)

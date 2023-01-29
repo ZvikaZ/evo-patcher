@@ -1,0 +1,33 @@
+[MESSAGES CONTROL]
+disable=
+        # I disagree with those:
+        no-else-return,
+        logging-fstring-interpolation,
+        unspecified-encoding,
+
+        # I might fix these one day:
+        line-too-long,
+        missing-module-docstring,
+        missing-function-docstring,
+        missing-class-docstring,
+        global-statement,
+        invalid-name,
+        too-many-arguments,
+        too-many-locals,
+        too-many-instance-attributes,
+        too-few-public-methods,
+        wildcard-import, unused-wildcard-import,
+
+        # I should fix them:
+        consider-using-enumerate,
+        unnecessary-dunder-call,
+        fixme
+
+# these two sections disable false alarm for Pytorch (and probalby for numpy),
+# copied from https://github.com/pytorch/pytorch/issues/701
+[MASTER]
+extension-pkg-whitelist=numpy,torch
+
+[TYPECHECK]
+ignored-modules=numpy,torch
+ignored-classes=numpy,torch
