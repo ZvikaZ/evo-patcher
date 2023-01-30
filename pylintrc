@@ -25,7 +25,7 @@ disable=
 
 
 
-# these two sections disable false alarm for Pytorch (and probalby for numpy),
+# these two sections disable false alarm for Pytorch (and probably for numpy),
 # copied from https://github.com/pytorch/pytorch/issues/701
 [MASTER]
 extension-pkg-whitelist=numpy,torch
