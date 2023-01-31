@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# make a link to this file inside .git/hooks
+# note: it will *not* successfully run directly from bin/ (because of the cd ../../evo_patcher)
+
+# If any command fails, exit immediately with that command's exit status
+set -eo pipefail
+
+cd `dirname "$0"`
+cd ../../evo_patcher
+
+echo '***************      MYPY      ********************'
+poetry run mypy main.py
+
+echo '***************     PYLINT     ********************'
+cd ..
+poetry run pylint --score n evo_patcher
+
+echo '**********      PRE-COMMIT PASSED    **************'
+echo

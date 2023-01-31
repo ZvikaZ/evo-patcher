@@ -1,0 +1,34 @@
+[tool.poetry]
+name = "evo-patcher"
+version = "0.1.0"
+description = ""
+authors = ["Zvika Haramaty <haramaty.zvika@gmail.com>"]
+readme = "README.md"
+packages = [{include = "evo_patcher"}]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+torch = "^1.13.1"
+torchvision = "^0.14.1"
+eckity = {git = "https://github.com/ZvikaZ/EC-KitY", rev = "all"}
+opencv-python = "^4.7.0.68"
+ipython = "^8.9.0"
+pillow = "^9.4.0"
+
+
+[tool.poetry.group.yolo.dependencies]
+psutil = "^5.9.4"
+pyyaml = "^6.0"
+tqdm = "^4.64.1"
+matplotlib = "^3.6.3"
+seaborn = "^0.12.2"
+
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^0.991"
+pylint = "^2.15.10"
+optuna = "^3.1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
