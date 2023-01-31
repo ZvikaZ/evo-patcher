@@ -27,7 +27,7 @@ def directories_mingling(i: int, name: str = 'single_attacks'):
     p = Path(name) / f'attack_{i}'
     p.mkdir(parents=True)
     for f in glob.glob('persist*'):
-        shutil.copy(f, p)
+        os.symlink(Path.cwd() / f, p / f)
     os.chdir(p)
     return orig_dir
 
